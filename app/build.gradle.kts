@@ -52,6 +52,7 @@ androidComponents.onVariants { variant ->
     }
     tasks.matching { it.name == "assemble$suffix" || it.name == "test${suffix}UnitTest" || it.name == "check" }.configureEach { dependsOn(verify) }
     tasks.withType<Test>().configureEach {
+        providers.gradleProperty("tokenizerFixturePath").orNull?.let { systemProperty("tokenizerFixturePath", it) }
         if (name == "test${suffix}UnitTest") {
             dependsOn(verify)
             systemProperty("mergedManifestPath", variant.artifacts.get(SingleArtifact.MERGED_MANIFEST).get().asFile.absolutePath)
@@ -80,5 +81,7 @@ dependencies {
     testImplementation("org.xerial:sqlite-jdbc:3.50.3.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
+    testImplementation("org.json:json:20250517")
     testImplementation("junit:junit:4.13.2")
 }
