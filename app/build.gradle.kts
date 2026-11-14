@@ -59,6 +59,8 @@ androidComponents.onVariants { variant ->
     }
 }
 
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.activity:activity-compose:1.11.0")
@@ -69,5 +71,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-process:2.9.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.room:room-runtime:2.8.3")
+    implementation("androidx.room:room-ktx:2.8.3")
+    ksp("androidx.room:room-compiler:2.8.3")
+    implementation("net.zetetic:sqlcipher-android:4.10.0")
+    implementation("androidx.sqlite:sqlite-ktx:2.6.1")
+    implementation("androidx.biometric:biometric:1.1.0")
+    testImplementation("org.xerial:sqlite-jdbc:3.50.3.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.7.0")
     testImplementation("junit:junit:4.13.2")
 }
