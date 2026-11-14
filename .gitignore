@@ -1,0 +1,9 @@
+*.iml
+.gradle/
+.kotlin/
+local.properties
+**/build/
+.idea/
+app/src/main/assets/model/*.onnx
+app/src/main/assets/model/tokenizer.json
+app/src/main/assets/model/sentencepiece.bpe.model
