@@ -1,0 +1,2 @@
+db394e1bff8fc822ed5d791290c48ac1674bc888ee4abebbf5e46dc2621edc00  Private-Diary-0.1.0-APK.zip
+8ed47f9739e38b600d72f06fd895346853099dfb330d7afc20b7fa37a3b217c2  Private-Diary-debug.apk
