@@ -1,4 +1,6 @@
-package ru.privatediary.ml
+package ru.privatediary.ml.embedder
+
+import ru.privatediary.ml.tokenizer.TextChunk
 
 enum class EngineAvailability { READY, MODEL_MISSING, UNAVAILABLE }
 

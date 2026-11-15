@@ -1,4 +1,4 @@
-package ru.privatediary.ml
+package ru.privatediary.ml.tokenizer
 
 /** Offsets address the original String in UTF-16, as used by Compose text selections. */
 data class TokenPiece(val id: Int, val start: Int, val end: Int)

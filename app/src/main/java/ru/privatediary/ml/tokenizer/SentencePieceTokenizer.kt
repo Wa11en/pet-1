@@ -1,4 +1,4 @@
-package ru.privatediary.ml
+package ru.privatediary.ml.tokenizer
 
 import org.json.JSONObject
 import java.nio.ByteBuffer

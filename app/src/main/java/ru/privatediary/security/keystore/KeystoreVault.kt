@@ -1,4 +1,4 @@
-package ru.privatediary.security
+package ru.privatediary.security.keystore
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec

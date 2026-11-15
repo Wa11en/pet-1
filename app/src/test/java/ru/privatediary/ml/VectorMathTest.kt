@@ -1,5 +1,9 @@
 package ru.privatediary.ml
 
+import ru.privatediary.ml.search.VectorMath
+import ru.privatediary.ml.search.CosineRanking
+import ru.privatediary.ml.search.EmbeddingCandidate
+
 import org.junit.Assert.*
 import org.junit.Test
 import kotlin.math.sqrt

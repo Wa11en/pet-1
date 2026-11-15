@@ -5,8 +5,8 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 import ru.privatediary.domain.models.Entry
-import ru.privatediary.ml.EngineAvailability
-import ru.privatediary.ml.TextChunk
+import ru.privatediary.ml.embedder.EngineAvailability
+import ru.privatediary.ml.tokenizer.TextChunk
 import ru.privatediary.testing.SearchFakeEngine
 import ru.privatediary.testing.SearchFakeRepository
 import ru.privatediary.testing.SearchFakeVectors

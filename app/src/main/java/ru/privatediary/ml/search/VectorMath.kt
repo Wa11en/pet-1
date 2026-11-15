@@ -1,4 +1,4 @@
-package ru.privatediary.ml
+package ru.privatediary.ml.search
 
 import kotlin.math.sqrt
 

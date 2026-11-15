@@ -13,10 +13,10 @@ import ru.privatediary.domain.EmbeddingStore
 import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.models.EmbeddingChunk
 import ru.privatediary.domain.models.SearchResult
-import ru.privatediary.ml.EmbeddingEngine
-import ru.privatediary.ml.EngineAvailability
-import ru.privatediary.ml.EmbeddingCandidate
-import ru.privatediary.ml.CosineRanking
+import ru.privatediary.ml.embedder.EmbeddingEngine
+import ru.privatediary.ml.embedder.EngineAvailability
+import ru.privatediary.ml.search.EmbeddingCandidate
+import ru.privatediary.ml.search.CosineRanking
 import java.security.MessageDigest
 
 /** Serial CPU work; cancellation is checked between chunks, writes use a text-hash guard. */
@@ -75,10 +75,12 @@ class SemanticSearchService(
             return@withContext null
         }
         val currentEntries = entries.allEntries().associateBy { it.id }
-        val chunks = vectors.allEmbeddings().filter { chunk ->
-            val entry = currentEntries[chunk.entryId] ?: return@filter false
+        val currentHashes = currentEntries.mapValues { (_, entry) ->
             MessageDigest.getInstance("SHA-256").digest(entry.text.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) } == chunk.contentHash
+                .joinToString("") { "%02x".format(it) }
+        }
+        val chunks = vectors.allEmbeddings().filter { chunk ->
+            currentHashes[chunk.entryId] == chunk.contentHash
         }.map { EmbeddingCandidate(it.entryId, it.fragment, it.vector) }
         CosineRanking.rank(queryVector, chunks).mapNotNull { hit ->
             currentEntries[hit.entryId]?.let { SearchResult(it, hit.fragment, hit.similarity) }

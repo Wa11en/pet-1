@@ -1,5 +1,8 @@
 package ru.privatediary.ml
 
+import ru.privatediary.ml.tokenizer.TokenPiece
+import ru.privatediary.ml.tokenizer.SentencePieceTokenizer
+
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test

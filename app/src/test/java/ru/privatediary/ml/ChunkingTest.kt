@@ -1,5 +1,9 @@
 package ru.privatediary.ml
 
+import ru.privatediary.ml.tokenizer.TextTokenizer
+import ru.privatediary.ml.tokenizer.TokenPiece
+import ru.privatediary.ml.tokenizer.EntryChunker
+
 import org.junit.Assert.*
 import org.junit.Test
 

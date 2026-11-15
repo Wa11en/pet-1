@@ -7,9 +7,9 @@ import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.models.EmbeddingChunk
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.domain.models.SearchResult
-import ru.privatediary.ml.EmbeddingEngine
-import ru.privatediary.ml.EngineAvailability
-import ru.privatediary.ml.TextChunk
+import ru.privatediary.ml.embedder.EmbeddingEngine
+import ru.privatediary.ml.embedder.EngineAvailability
+import ru.privatediary.ml.tokenizer.TextChunk
 
 class SearchFakeRepository(var rows: List<Entry> = emptyList()) : EntryRepository {
     var wordQueries = mutableListOf<String>()

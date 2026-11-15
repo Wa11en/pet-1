@@ -1,4 +1,7 @@
-package ru.privatediary.security
+package ru.privatediary.security.lock
+
+import ru.privatediary.security.keystore.KeystoreVault
+import ru.privatediary.security.DiarySettings
 
 import android.content.Context
 import android.os.SystemClock

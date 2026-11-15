@@ -1,4 +1,9 @@
-package ru.privatediary.ml
+package ru.privatediary.ml.embedder
+
+import ru.privatediary.ml.tokenizer.TextChunk
+import ru.privatediary.ml.tokenizer.EntryChunker
+import ru.privatediary.ml.tokenizer.SentencePieceTokenizer
+import ru.privatediary.ml.search.VectorMath
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment

@@ -1,0 +1,10 @@
+<resources>
+    <string name="storage_error">Unable to open the encrypted diary. No data was reset. If the device key is lost, reinstall the app and restore a password-protected backup.</string>
+    <string name="wrong_pin">Incorrect PIN. After repeated attempts, wait for the timer and try again.</string>
+    <string name="operation_error">Unable to complete the operation. Check that the text is within 1 million characters, with up to 50 tags of 100 characters each, and that storage is available.</string>
+    <string name="file_error">Unable to read or write the file. Use UTF-8 TXT/MD for imports, check the size and choose accessible local storage.</string>
+    <string name="restore_error">Unable to restore the backup: wrong password, damaged or unsupported file, or unavailable storage. Current entries have been kept.</string>
+    <string name="file_success">Done. Your file operation completed successfully.</string>
+    <string name="search_error">Search is temporarily unavailable. Please try again.</string>
+    <string name="biometric_error">Biometric authentication is unavailable. Use your diary PIN.</string>
+</resources>
