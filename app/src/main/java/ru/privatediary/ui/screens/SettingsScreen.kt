@@ -159,13 +159,21 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions) {
                 ) {
                     if (state.semanticAvailable) Icon(Icons.Outlined.Check, null, Modifier.size(14.dp))
                     Text(
-                        stringResource(if (state.semanticAvailable) R.string.settings_model_available else R.string.settings_model_fallback),
+                        stringResource(when {
+                            state.indexing && !state.semanticAvailable -> R.string.settings_model_preparing
+                            state.semanticAvailable -> R.string.settings_model_available
+                            else -> R.string.settings_model_fallback
+                        }),
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
             }
             Text(
-                stringResource(if (state.semanticAvailable) R.string.semantic_ready else R.string.semantic_missing),
+                stringResource(when {
+                    state.indexing && !state.semanticAvailable -> R.string.semantic_preparing
+                    state.semanticAvailable -> R.string.semantic_ready
+                    else -> R.string.semantic_missing
+                }),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

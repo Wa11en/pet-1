@@ -34,7 +34,7 @@
     <string name="by_words">By words</string>
     <string name="by_meaning">By meaning</string>
     <string name="semantic_ready">Meaning search is ready. The model works entirely on this device.</string>
-    <string name="semantic_missing">The local model is unavailable. Meaning search uses keyword search until a model is bundled in the app.</string>
+    <string name="semantic_missing">Meaning search is currently unavailable, so keyword search is used. For a build with the model, check free space and try restarting the app.</string>
     <string name="indexing">Preparing the meaning index in the background…</string>
     <string name="search_examples">Try “when did I feel calm?” or “a walk by the water”.</string>
     <string name="no_results">No entries found. Try different words.</string>

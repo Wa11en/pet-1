@@ -1,4 +1,5 @@
 import com.android.build.api.artifact.SingleArtifact
+import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
@@ -25,6 +26,40 @@ abstract class CheckNoInternet : DefaultTask() {
     }
 }
 
+abstract class VerifyBundledModel : DefaultTask() {
+    @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val modelDirectory: DirectoryProperty
+
+    @TaskAction fun verify() {
+        val expected = mapOf(
+            "model_int8.onnx" to "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c",
+            "tokenizer.json" to "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39",
+        )
+        expected.forEach { (name, sha256) ->
+            val file = modelDirectory.get().file(name).asFile
+            check(file.isFile) { "Offline build requires $name. Run bash scripts/fetch_model.sh on the build computer." }
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { stream ->
+                val buffer = ByteArray(1024 * 1024)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    digest.update(buffer, 0, count)
+                }
+            }
+            check(digest.digest().joinToString("") { "%02x".format(it) } == sha256) {
+                "Offline build rejected: SHA-256 mismatch for $name"
+            }
+        }
+    }
+}
+
+val requireModel = providers.gradleProperty("requireModel").map { it.toBooleanStrict() }.orElse(false)
+val verifyOfflineModel = providers.gradleProperty("verifyOfflineModel").map { it.toBooleanStrict() }.orElse(false)
+val verifyBundledModel = tasks.register<VerifyBundledModel>("verifyBundledModel") {
+    modelDirectory.set(layout.projectDirectory.dir("src/main/assets/model"))
+}
+
 android {
     namespace = "ru.privatediary"
     compileSdk = 37
@@ -33,8 +68,8 @@ android {
         applicationId = "ru.privatediary"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // Both languages must be available offline, including installs from App Bundles.
@@ -52,9 +87,18 @@ androidComponents.onVariants { variant ->
     val verify = tasks.register<CheckNoInternet>("check${suffix}NoInternet") {
         manifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
     }
-    tasks.matching { it.name == "assemble$suffix" || it.name == "test${suffix}UnitTest" || it.name == "check" }.configureEach { dependsOn(verify) }
+    tasks.matching { it.name == "assemble$suffix" || it.name == "bundle$suffix" || it.name == "test${suffix}UnitTest" || it.name == "check" }.configureEach {
+        dependsOn(verify)
+        if (requireModel.get()) dependsOn(verifyBundledModel)
+    }
     tasks.withType<Test>().configureEach {
         providers.gradleProperty("tokenizerFixturePath").orNull?.let { systemProperty("tokenizerFixturePath", it) }
+        val explicitModelDirectory = providers.gradleProperty("offlineModelDirectory").orNull
+        if (explicitModelDirectory != null) {
+            systemProperty("offlineModelDirectory", rootProject.file(explicitModelDirectory).absolutePath)
+        } else if (verifyOfflineModel.get()) {
+            systemProperty("offlineModelDirectory", layout.projectDirectory.dir("src/main/assets/model").asFile.absolutePath)
+        }
         if (name == "test${suffix}UnitTest") {
             dependsOn(verify)
             systemProperty("mergedManifestPath", variant.artifacts.get(SingleArtifact.MERGED_MANIFEST).get().asFile.absolutePath)
@@ -86,4 +130,8 @@ dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
     testImplementation("org.json:json:20250517")
     testImplementation("junit:junit:4.13.2")
+    // CPU native library for explicitly requested JVM model tests only; never included in the Android APK.
+    if (providers.gradleProperty("offlineModelDirectory").isPresent || verifyOfflineModel.get()) {
+        testRuntimeOnly("com.microsoft.onnxruntime:onnxruntime:1.23.2")
+    }
 }

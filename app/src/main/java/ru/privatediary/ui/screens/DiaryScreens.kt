@@ -347,7 +347,11 @@ private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (En
                     Icon(if (state.semanticAvailable) Icons.Outlined.AutoAwesome else Icons.Outlined.Info, null,
                         Modifier.padding(top = 2.dp).size(20.dp), tint = palette.primary)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(stringResource(if (state.semanticAvailable) R.string.semantic_ready else R.string.semantic_missing),
+                        Text(stringResource(when {
+                            state.indexing && !state.semanticAvailable -> R.string.semantic_preparing
+                            state.semanticAvailable -> R.string.semantic_ready
+                            else -> R.string.semantic_missing
+                        }),
                             style = MaterialTheme.typography.bodySmall, color = palette.onSurfaceVariant)
                         if (state.indexing) Text(stringResource(R.string.indexing), style = MaterialTheme.typography.labelSmall, color = palette.primary)
                     }

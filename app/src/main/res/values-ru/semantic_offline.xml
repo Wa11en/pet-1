@@ -1,0 +1,4 @@
+<resources>
+    <string name="semantic_preparing">Подготавливаем смысловой поиск на устройстве. При первом запуске это может занять немного времени.</string>
+    <string name="settings_model_preparing">Подготовка поиска</string>
+</resources>

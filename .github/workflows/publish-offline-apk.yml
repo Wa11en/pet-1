@@ -1,0 +1,32 @@
+name: Publish signed offline APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-offline-v0.3.0
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Restore and verify the locally signed APK
+        run: >-
+          python3 scripts/restore_offline_apk.py
+          downloads/offline-v0.3.0 "$RUNNER_TEMP/offline-release"
+      - name: Upload verified APK to the existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v0.3.0 \
+            "$RUNNER_TEMP/offline-release/Private-Diary-0.3.0-offline.apk" \
+            downloads/offline-v0.3.0/SHA256SUMS-apk.txt \
+            --repo "$GITHUB_REPOSITORY" --clobber

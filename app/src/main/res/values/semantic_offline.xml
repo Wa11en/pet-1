@@ -1,0 +1,4 @@
+<resources>
+    <string name="semantic_preparing">Preparing meaning search on this device. The first start may take a little time.</string>
+    <string name="settings_model_preparing">Preparing search</string>
+</resources>

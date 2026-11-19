@@ -1,21 +1,15 @@
 package ru.privatediary.ml.embedder
 
-import ru.privatediary.ml.tokenizer.TextChunk
-import ru.privatediary.ml.tokenizer.EntryChunker
-import ru.privatediary.ml.tokenizer.SentencePieceTokenizer
-import ru.privatediary.ml.search.VectorMath
-
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
 import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import ru.privatediary.ml.tokenizer.EntryChunker
+import ru.privatediary.ml.tokenizer.SentencePieceTokenizer
+import ru.privatediary.ml.tokenizer.TextChunk
 import java.io.File
-import java.nio.LongBuffer
 
 /** All model initialization, tokenization and inference run off the UI thread. */
 class OnnxEmbeddingEngine(context: Context) : EmbeddingEngine {
@@ -25,8 +19,7 @@ class OnnxEmbeddingEngine(context: Context) : EmbeddingEngine {
         private set
     private var attempted = false
     private var tokenizer: SentencePieceTokenizer? = null
-    private var session: OrtSession? = null
-    private var environment: OrtEnvironment? = null
+    private var encoder: E5OnnxEncoder? = null
 
     override suspend fun prepare(): EngineAvailability = withContext(Dispatchers.IO) {
         mutex.withLock { prepareLocked() }
@@ -47,91 +40,77 @@ class OnnxEmbeddingEngine(context: Context) : EmbeddingEngine {
         }
         try {
             val loadedTokenizer = appContext.assets.open("model/tokenizer.json").bufferedReader().use {
-                SentencePieceTokenizer(it.readText())
+                SentencePieceTokenizer(it)
             }
-            // ONNX needs a seekable model. This copy contains public model weights, never diary text.
+            // ONNX Runtime opens a private file; this contains public model weights, never diary data.
             val directory = File(appContext.noBackupFilesDir, "embedding-model").apply { mkdirs() }
-            val modelFile = File(directory, "e5-small-761b726d-int8.onnx")
-            if (!modelFile.isFile || modelFile.length() != MODEL_SIZE) {
+            val model = File(directory, "e5-small-761b726d-int8.onnx")
+            if (!model.isFile || model.length() != MODEL_SIZE) {
                 val temporary = File(directory, "model.part")
                 try {
-                    appContext.assets.open("model/model_int8.onnx").use { input ->
-                        temporary.outputStream().use { output -> input.copyTo(output) }
-                    }
-                    check(temporary.length() == MODEL_SIZE) { "Incomplete model" }
-                    check(temporary.renameTo(modelFile)) { "Cannot install local model" }
+                    appContext.assets.open("model/model_int8.onnx").use { input -> temporary.outputStream().use(input::copyTo) }
+                    check(temporary.length() == MODEL_SIZE) { "Incomplete bundled model" }
+                    check(temporary.renameTo(model)) { "Cannot install bundled model" }
                 } finally {
                     temporary.delete()
                 }
             }
-            val ort = OrtEnvironment.getEnvironment().apply { setTelemetry(false) }
-            val loadedSession = OrtSession.SessionOptions().use { options ->
-                options.setIntraOpNumThreads(2)
-                options.setInterOpNumThreads(1)
-                ort.createSession(modelFile.absolutePath, options)
-            }
+            val loadedEncoder = E5OnnxEncoder(model, loadedTokenizer)
             tokenizer = loadedTokenizer
-            environment = ort
-            session = loadedSession
+            encoder = loadedEncoder
             availability = EngineAvailability.READY
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            availability = EngineAvailability.UNAVAILABLE
+            disable()
         } catch (_: LinkageError) {
-            // An unsupported native ABI must not prevent the rest of the diary from opening.
-            availability = EngineAvailability.UNAVAILABLE
+            disable()
+        } catch (_: OutOfMemoryError) {
+            disable()
         }
         return availability
     }
 
-    override suspend fun embedPassage(text: String): FloatArray? = embed("passage: $text")
-    override suspend fun embedQuery(text: String): FloatArray? = embed("query: $text")
+    override suspend fun embedPassage(text: String): FloatArray? = embed { embedPassage(text) }
+    override suspend fun embedQuery(text: String): FloatArray? = embed { embedQuery(text) }
 
     override suspend fun chunk(text: String): List<TextChunk> = withContext(Dispatchers.Default) {
         mutex.withLock {
             if (prepareLocked() != EngineAvailability.READY) return@withLock emptyList()
-            EntryChunker(checkNotNull(tokenizer)).chunk(text)
+            try {
+                EntryChunker(checkNotNull(tokenizer)).chunk(text)
+            } catch (_: OutOfMemoryError) {
+                disable()
+                emptyList()
+            }
         }
     }
 
-    private suspend fun embed(text: String): FloatArray? = withContext(Dispatchers.Default) {
+    private suspend fun embed(operation: E5OnnxEncoder.() -> FloatArray): FloatArray? = withContext(Dispatchers.Default) {
         mutex.withLock {
             if (prepareLocked() != EngineAvailability.READY) return@withLock null
             try {
-                val ids = checkNotNull(tokenizer).encode(text)
-                val mask = LongArray(ids.size) { 1L }
-                val ort = checkNotNull(environment)
-                val loadedSession = checkNotNull(session)
-                val shape = longArrayOf(1L, ids.size.toLong())
-                val tensors = mutableMapOf<String, OnnxTensor>()
-                try {
-                    tensors["input_ids"] = OnnxTensor.createTensor(ort, LongBuffer.wrap(ids), shape)
-                    tensors["attention_mask"] = OnnxTensor.createTensor(ort, LongBuffer.wrap(mask), shape)
-                    if ("token_type_ids" in loadedSession.inputNames) {
-                        tensors["token_type_ids"] = OnnxTensor.createTensor(ort, LongBuffer.wrap(LongArray(ids.size)), shape)
-                    }
-                    loadedSession.run(tensors).use { outputs ->
-                        @Suppress("UNCHECKED_CAST")
-                        val batch = outputs[0].value as Array<Array<FloatArray>>
-                        VectorMath.meanPool(batch[0], mask)
-                    }
-                } finally {
-                    tensors.values.forEach { it.close() }
-                }
+                checkNotNull(encoder).operation()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                // The repository can immediately switch to FTS if the bundled assets are incompatible.
-                availability = EngineAvailability.UNAVAILABLE
-                runCatching { session?.close() }
-                session = null
+                disable()
                 null
             } catch (_: LinkageError) {
-                availability = EngineAvailability.UNAVAILABLE
+                disable()
+                null
+            } catch (_: OutOfMemoryError) {
+                disable()
                 null
             }
         }
+    }
+
+    private fun disable() {
+        availability = EngineAvailability.UNAVAILABLE
+        runCatching { encoder?.close() }
+        encoder = null
+        tokenizer = null
     }
 
     private companion object {

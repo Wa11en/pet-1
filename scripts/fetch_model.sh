@@ -10,7 +10,7 @@ mkdir -p "$DESTINATION"
 TEMP_DIR="$(mktemp -d "$DESTINATION/.fetch.XXXXXXXX")"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
 
-verify_sha256() {
+matches_sha256() {
     local expected="$1" file="$2" actual
     if command -v sha256sum >/dev/null 2>&1; then
         actual="$(sha256sum "$file")"
@@ -18,19 +18,33 @@ verify_sha256() {
         actual="$(shasum -a 256 "$file")"
     fi
     actual="${actual%% *}"
-    if [[ "$actual" != "$expected" ]]; then
-        echo "Ошибка SHA-256: $file" >&2
-        exit 1
-    fi
+    [[ "$actual" == "$expected" ]]
 }
 
-echo 'Загрузка multilingual-e5-small int8 (~135 МБ вместе со словарём)…'
-curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
-    "$BASE_URL/onnx/model_int8.onnx" -o "$TEMP_DIR/model_int8.onnx"
-curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
-    "$BASE_URL/tokenizer.json" -o "$TEMP_DIR/tokenizer.json"
-verify_sha256 '4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c' "$TEMP_DIR/model_int8.onnx"
-verify_sha256 '0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39' "$TEMP_DIR/tokenizer.json"
-mv -- "$TEMP_DIR/model_int8.onnx" "$DESTINATION/model_int8.onnx"
-mv -- "$TEMP_DIR/tokenizer.json" "$DESTINATION/tokenizer.json"
+fetch_verified() {
+    local remote_path="$1" name="$2" expected="$3"
+    if [[ -f "$DESTINATION/$name" ]]; then
+        if matches_sha256 "$expected" "$DESTINATION/$name"; then
+            echo "Уже проверен: $name (загрузка не нужна)."
+            return
+        fi
+        echo "Контрольная сумма $name не совпадает. Загружаем проверенную версию заново." >&2
+    fi
+
+    echo "Загрузка $name…"
+    curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 \
+        --proto '=https' --proto-redir '=https' --tlsv1.2 \
+        "$BASE_URL/$remote_path" -o "$TEMP_DIR/$name"
+    if ! matches_sha256 "$expected" "$TEMP_DIR/$name"; then
+        echo "Ошибка SHA-256: $name. Загруженный файл не установлен." >&2
+        exit 1
+    fi
+    mv -- "$TEMP_DIR/$name" "$DESTINATION/$name"
+}
+
+echo 'Подготовка multilingual-e5-small int8 (~135 МБ вместе со словарём)…'
+fetch_verified 'onnx/model_int8.onnx' 'model_int8.onnx' \
+    '4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c'
+fetch_verified 'tokenizer.json' 'tokenizer.json' \
+    '0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39'
 echo 'Готово. Пересоберите APK, чтобы включить модель в приложение.'

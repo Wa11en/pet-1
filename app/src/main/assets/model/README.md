@@ -1,16 +1,12 @@
-# Необязательная локальная модель
+# Локальная модель E5
 
-В репозитории намеренно нет весов модели. Запустите вручную из корня проекта:
+Полная офлайн-сборка 0.3.0 содержит в APK `model_int8.onnx` и `tokenizer.json`. Телефон ничего не скачивает. Файлы весов исключены из Git: для воспроизводимой сборки на компьютере выполните:
 
 ```sh
-./scripts/fetch_model.sh
+bash scripts/fetch_model.sh
+./gradlew assembleDebug testDebugUnitTest -PrequireModel=true -PverifyOfflineModel=true
 ```
 
-Скрипт загрузит `model_int8.onnx` и `tokenizer.json` в эту папку и проверит
-SHA-256. Затем пересоберите APK. Приложение никогда не скачивает эти файлы.
-Если модель отсутствует или несовместима, дневник использует поиск по словам.
+Скрипт проверяет закреплённые SHA-256 и пропускает уже проверенные файлы. `-PrequireModel=true` останавливает сборку при отсутствии или повреждении assets; `-PverifyOfflineModel=true` запускает реальный ONNX CPU-тест на компьютере разработчика (native desktop-библиотека входит только в тесты). Обычная сборка без assets сохраняет FTS fallback.
 
-Модель: intfloat/multilingual-e5-small, ONNX int8-конвертация Xenova,
-revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`, лицензия MIT.
-Веса занимают примерно 118 МБ, словарь — 17 МБ. Копия весов для ONNX Runtime
-создаётся в приватном каталоге `noBackupFilesDir` при первом использовании.
+Модель: intfloat/multilingual-e5-small, переносимая ONNX int8-конвертация Xenova, revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`, лицензия MIT. Веса 118054593 байта, словарь 17082730 байт. При первом использовании создаётся приватная копия весов в `noBackupFilesDir` для ONNX Runtime.

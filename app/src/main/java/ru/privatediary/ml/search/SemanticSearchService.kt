@@ -36,9 +36,9 @@ class SemanticSearchService(
     suspend fun indexPending() = withContext(Dispatchers.Default) {
         mutex.withLock {
             try {
+                _indexing.value = true
                 _available.value = engine.prepare() == EngineAvailability.READY
                 if (!_available.value) return@withLock
-                _indexing.value = true
                 for (entry in vectors.pendingIndexEntries()) {
                     currentCoroutineContext().ensureActive()
                     val hash = MessageDigest.getInstance("SHA-256").digest(entry.text.toByteArray(Charsets.UTF_8))

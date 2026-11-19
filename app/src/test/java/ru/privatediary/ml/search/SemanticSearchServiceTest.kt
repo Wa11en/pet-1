@@ -6,6 +6,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.ml.embedder.EngineAvailability
+import ru.privatediary.ml.embedder.EmbeddingEngine
 import ru.privatediary.ml.tokenizer.TextChunk
 import ru.privatediary.testing.SearchFakeEngine
 import ru.privatediary.testing.SearchFakeRepository
@@ -13,6 +14,23 @@ import ru.privatediary.testing.SearchFakeVectors
 
 class SemanticSearchServiceTest {
     private val entry = Entry(1L, 0L, "old entry")
+
+    @Test fun modelPreparationIsBusyAndCancellationResetsBusy() = runBlocking {
+        lateinit var service: SemanticSearchService
+        val engine = object : EmbeddingEngine by SearchFakeEngine() {
+            override suspend fun prepare(): EngineAvailability {
+                assertTrue(service.indexing.value)
+                throw CancellationException("Model preparation cancelled")
+            }
+        }
+        service = SemanticSearchService(engine, SearchFakeRepository(), SearchFakeVectors())
+        try {
+            service.indexPending()
+            fail("Expected cancellation")
+        } catch (_: CancellationException) {
+            assertFalse(service.indexing.value)
+        }
+    }
 
     @Test fun missingModelDoesNotReadVectorsOrStartIndexing() = runBlocking {
         val engine = SearchFakeEngine().apply { availability = EngineAvailability.MODEL_MISSING }
