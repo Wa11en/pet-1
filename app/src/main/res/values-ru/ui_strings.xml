@@ -38,7 +38,11 @@
     <string name="indexing">Подготавливаем смысловой индекс в фоне…</string>
     <string name="search_examples">Например: «когда я чувствовал спокойствие?» или «прогулка у воды».</string>
     <string name="no_results">Записей не найдено. Попробуйте другие слова.</string>
-    <string name="similarity">Сходство %1$d%%</string>
+    <string name="similarity">Близость %1$.3f</string>
+    <string name="semantic_score_explanation">Результаты идут от наиболее близких по смыслу. Оценка — не процент совпадения.</string>
+    <string name="semantic_show_additional">Показать менее близкие (%1$d)</string>
+    <string name="semantic_hide_additional">Скрыть менее близкие</string>
+    <string name="semantic_additional_explanation">Сначала показаны ближайшие записи. Можно расширить выдачу.</string>
     <string name="edit_entry">Редактирование</string>
     <string name="back">Назад</string>
     <string name="save">Сохранить</string>

@@ -8,3 +8,4 @@ app/src/main/assets/model/*.onnx
 app/src/main/assets/model/tokenizer.json
 app/src/main/assets/model/sentencepiece.bpe.model
 app/src/main/assets/model/.fetch.*/
+__pycache__/

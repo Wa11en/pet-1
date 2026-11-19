@@ -8,6 +8,9 @@ import ru.privatediary.ml.embedder.E5OnnxEncoder
 import ru.privatediary.ml.search.CosineRanking
 import ru.privatediary.ml.search.EmbeddingCandidate
 import ru.privatediary.ml.search.VectorMath
+import ru.privatediary.ml.search.ClosestResults
+import ru.privatediary.domain.models.Entry
+import ru.privatediary.domain.models.SearchResult
 import ru.privatediary.ml.tokenizer.EntryChunker
 import ru.privatediary.ml.tokenizer.SentencePieceTokenizer
 import java.io.File
@@ -60,6 +63,19 @@ class E5OnnxEncoderIntegrationTest {
             val russianQuery = encoder.embedQuery(queries[0])
             val englishOnly = CosineRanking.rank(russianQuery, candidates.filter { it.entryId in setOf(3L, 4L) })
             assertEquals("Russian query should find the English meaning", 3L, englishOnly.first().entryId)
+
+            // User regression: a high background cosine must not make food and gaming look
+            // equally relevant. Exercise the real encoder, ranker and first-page selection.
+            val diary = listOf("выиграл в доту", "поел пиццу").mapIndexed { i, text ->
+                EmbeddingCandidate(i + 10L, text, encoder.embedPassage(text))
+            }
+            val food = CosineRanking.rank(encoder.embedQuery("еда"), diary)
+            assertEquals("Food must rank pizza ahead of Dota", 11L, food.first().entryId)
+            val foodResults = food.map { SearchResult(Entry(it.entryId, 0L, it.fragment), it.fragment, it.similarity) }
+            val closest = ClosestResults.select(foodResults)
+            assertEquals(listOf(11L), closest.primary.map { it.entry.id })
+            assertEquals("The lower-ranked game remains available on request", listOf(10L), closest.additional.map { it.entry.id })
+            println("Food regression: ${food.joinToString { "${it.fragment}: ${it.similarity}" }}")
 
             // Exercise inference on the same overlapping 200-token chunks used by the app.
             val longText = (passages[0].second + " ").repeat(25)
