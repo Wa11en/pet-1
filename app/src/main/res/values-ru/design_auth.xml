@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_setup_title">Место для\nваших мыслей</string>
+    <string name="auth_setup_subtitle">Сохраняйте маленькие моменты, которые хочется запомнить. Это пространство — ваше.</string>
+    <string name="auth_pin_title">Только для вас</string>
+    <string name="auth_pin_subtitle">Придумайте PIN, чтобы страницы оставались личными.</string>
+    <string name="auth_pin_reminder">PIN нельзя восстановить. Храните резервную копию с паролем в надёжном месте.</string>
+    <string name="auth_biometrics_subtitle">Открывайте дневник привычным касанием</string>
+    <string name="auth_lock_title">С возвращением</string>
+    <string name="auth_your_space">ВАШЕ ЛИЧНОЕ ПРОСТРАНСТВО</string>
+    <string name="auth_privacy_note">Всё зашифровано на устройстве. Без аккаунтов, облачной синхронизации и доступа в интернет.</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.PrivateDiary" parent="Base.Theme.PrivateDiary">
+        <item name="android:windowLightNavigationBar">@bool/diary_light_system_bars</item>
+    </style>
+</resources>

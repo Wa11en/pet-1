@@ -1,0 +1,4 @@
+<resources>
+    <color name="diary_window_background">#F7F4EC</color>
+    <bool name="diary_light_system_bars">true</bool>
+</resources>

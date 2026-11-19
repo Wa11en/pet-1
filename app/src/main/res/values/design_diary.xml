@@ -1,0 +1,21 @@
+<resources>
+    <string name="design_opening">Opening your diary</string>
+    <string name="design_journal_title">My pages</string>
+    <string name="design_search_subtitle">Come back to what matters</string>
+    <string name="design_settings_subtitle">Privacy, language and your files</string>
+    <string name="design_private_badge">ONLY ON YOUR DEVICE</string>
+    <string name="design_invitation_first">Begin with\na few words.</string>
+    <string name="design_invitation_today">How was\nyour day?</string>
+    <string name="design_invitation_caption">Keep the things you want to remember.</string>
+    <string name="design_first_entry">Write your first entry</string>
+    <string name="design_empty_hint">Your entries will appear here. Start with how you are feeling right now.</string>
+    <string name="design_your_entries">Your entries</string>
+    <string name="design_today">Today</string>
+    <string name="design_more_tags">+%1$d</string>
+    <string name="design_results">Pages found</string>
+    <string name="design_search_empty_title">A place for\nevery thought.</string>
+    <plurals name="design_entry_count">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
+</resources>

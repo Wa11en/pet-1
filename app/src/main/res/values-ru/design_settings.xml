@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_privacy_summary">Записи зашифрованы и остаются на этом устройстве.</string>
+    <string name="settings_privacy_caption">Без аккаунтов. Без аналитики.</string>
+    <string name="settings_security_section">ДОСТУП К ДНЕВНИКУ</string>
+    <string name="settings_preferences_section">ПОД ВАС</string>
+    <string name="settings_files_section">ВАШИ ЗАПИСИ</string>
+    <string name="settings_search_section">ПОИСК</string>
+    <string name="settings_lock_hint">Когда дневник остаётся в фоне</string>
+    <string name="settings_import_support">Текстовые файлы и Markdown</string>
+    <string name="settings_markdown_support">Открытый архив без пароля</string>
+    <string name="settings_backup_support">Копия с отдельным паролем</string>
+    <string name="settings_restore_support">Заменить записи данными из копии</string>
+    <string name="settings_model_available">Готов на устройстве</string>
+    <string name="settings_model_fallback">Поиск по словам</string>
+    <string name="settings_password_minimum">Не менее 10 символов</string>
+    <string name="settings_password_mismatch">Пароли не совпадают</string>
+    <string name="settings_footer">Личный дневник · Только для вас</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_page_title">Моя страница</string>
+    <string name="editor_writing_hint">О чём хочется написать?\nМожно начать с пары слов.</string>
+    <string name="editor_details_title">Настроение и теги</string>
+    <string name="editor_tags_hint">Через запятую: дом, важное, прогулки</string>
+    <string name="editor_private_note">Только вы и ваши мысли</string>
+    <string name="editor_change_date">Изменить дату: %1$s</string>
+    <string name="editor_change_time">Изменить время: %1$s</string>
+    <string name="editor_expanded">Развёрнуто</string>
+    <string name="editor_collapsed">Свёрнуто</string>
+    <string name="editor_mood_choice">%1$d из 5: %2$s</string>
+    <string name="editor_mood_1">Тяжело</string>
+    <string name="editor_mood_2">Грустно</string>
+    <string name="editor_mood_3">Нейтрально</string>
+    <string name="editor_mood_4">Хорошо</string>
+    <string name="editor_mood_5">Отлично</string>
+    <string name="editor_text_limit">Достигнут максимальный размер страницы.</string>
+</resources>

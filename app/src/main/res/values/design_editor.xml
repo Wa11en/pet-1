@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_page_title">My page</string>
+    <string name="editor_writing_hint">What is on your mind?\nA few words are enough to begin.</string>
+    <string name="editor_details_title">Mood and tags</string>
+    <string name="editor_tags_hint">Separate with commas: home, moments, walks</string>
+    <string name="editor_private_note">Just you and your thoughts</string>
+    <string name="editor_change_date">Change date: %1$s</string>
+    <string name="editor_change_time">Change time: %1$s</string>
+    <string name="editor_expanded">Expanded</string>
+    <string name="editor_collapsed">Collapsed</string>
+    <string name="editor_mood_choice">%1$d of 5: %2$s</string>
+    <string name="editor_mood_1">Difficult</string>
+    <string name="editor_mood_2">Sad</string>
+    <string name="editor_mood_3">Neutral</string>
+    <string name="editor_mood_4">Good</string>
+    <string name="editor_mood_5">Wonderful</string>
+    <string name="editor_text_limit">This page has reached its maximum length.</string>
+</resources>

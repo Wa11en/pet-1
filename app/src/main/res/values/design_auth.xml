@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_setup_title">A space for\nyour thoughts</string>
+    <string name="auth_setup_subtitle">Keep the little things you want to remember. This space belongs to you.</string>
+    <string name="auth_pin_title">Make it yours</string>
+    <string name="auth_pin_subtitle">Create a PIN to keep your pages private.</string>
+    <string name="auth_pin_reminder">Your PIN cannot be recovered. Keep a password-protected backup somewhere safe.</string>
+    <string name="auth_biometrics_subtitle">A familiar touch to open your diary</string>
+    <string name="auth_lock_title">Welcome back</string>
+    <string name="auth_your_space">YOUR PRIVATE SPACE</string>
+    <string name="auth_privacy_note">Encrypted on this device. No accounts, cloud sync or internet access.</string>
+</resources>

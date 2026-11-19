@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_privacy_summary">Entries are encrypted and stay on this device.</string>
+    <string name="settings_privacy_caption">No accounts. No analytics.</string>
+    <string name="settings_security_section">ACCESS</string>
+    <string name="settings_preferences_section">MAKE IT YOURS</string>
+    <string name="settings_files_section">YOUR ENTRIES</string>
+    <string name="settings_search_section">SEARCH</string>
+    <string name="settings_lock_hint">When your diary is in the background</string>
+    <string name="settings_import_support">Text files and Markdown</string>
+    <string name="settings_markdown_support">A readable archive without a password</string>
+    <string name="settings_backup_support">A copy protected by its own password</string>
+    <string name="settings_restore_support">Replace entries with a saved copy</string>
+    <string name="settings_model_available">Ready on this device</string>
+    <string name="settings_model_fallback">Keyword search</string>
+    <string name="settings_password_minimum">At least 10 characters</string>
+    <string name="settings_password_mismatch">Passwords do not match</string>
+    <string name="settings_footer">Private Diary · A space of your own</string>
+</resources>

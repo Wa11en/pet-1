@@ -1,0 +1,23 @@
+<resources>
+    <string name="design_opening">Открываем дневник</string>
+    <string name="design_journal_title">Мои страницы</string>
+    <string name="design_search_subtitle">Вернитесь к тому, что важно</string>
+    <string name="design_settings_subtitle">Приватность, язык и ваши файлы</string>
+    <string name="design_private_badge">ТОЛЬКО НА ВАШЕМ УСТРОЙСТВЕ</string>
+    <string name="design_invitation_first">Начните\nс пары слов.</string>
+    <string name="design_invitation_today">Как прошёл\nваш день?</string>
+    <string name="design_invitation_caption">Сохраните то, что хочется запомнить.</string>
+    <string name="design_first_entry">Написать первую запись</string>
+    <string name="design_empty_hint">Здесь появятся ваши записи. Можно начать с того, что вы чувствуете сейчас.</string>
+    <string name="design_your_entries">Ваши записи</string>
+    <string name="design_today">Сегодня</string>
+    <string name="design_more_tags">+%1$d</string>
+    <string name="design_results">Найденные страницы</string>
+    <string name="design_search_empty_title">У каждой мысли\nесть своё место.</string>
+    <plurals name="design_entry_count">
+        <item quantity="one">%1$d запись</item>
+        <item quantity="few">%1$d записи</item>
+        <item quantity="many">%1$d записей</item>
+        <item quantity="other">%1$d записи</item>
+    </plurals>
+</resources>
