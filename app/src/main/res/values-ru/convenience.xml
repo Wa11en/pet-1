@@ -2,4 +2,6 @@
     <string name="resume_draft">Продолжить черновик</string>
     <string name="draft_save_error">Не удалось сохранить черновик. Оставьте редактор открытым и повторите попытку.</string>
     <string name="trash_expired">Срок хранения истёк или записи уже нет в корзине.</string>
+    <string name="draft_other_date">У вас есть незаконченный черновик за %1$s. Продолжите и сохраните его, затем создайте другую запись.</string>
+    <string name="editor_tags_bounds">Можно указать до 50 тегов, каждый не длиннее 100 символов.</string>
 </resources>

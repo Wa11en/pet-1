@@ -2,4 +2,6 @@
     <string name="resume_draft">Continue draft</string>
     <string name="draft_save_error">Could not save the draft. Keep the editor open and try again.</string>
     <string name="trash_expired">The entry has expired or is no longer in the trash.</string>
+    <string name="draft_other_date">There is an unfinished draft dated %1$s. Continue and save it before starting another entry.</string>
+    <string name="editor_tags_bounds">Up to 50 tags, each at most 100 characters.</string>
 </resources>

@@ -36,6 +36,9 @@ data class DiaryUiState(
     val undoRevision: Long = 0,
     val searchFilters: SearchFilters = SearchFilters(),
     val editorFocusMatch: Boolean = false,
+    val dailyReminderEnabled: Boolean = false,
+    val dailyReminderMinutes: Int = 20 * 60,
+    val backupReminderEnabled: Boolean = false,
 )
 
 data class DiaryActions(
@@ -65,4 +68,7 @@ data class DiaryActions(
     val onSearchFiltersChanged: (SearchFilters) -> Unit,
     val onOpenSearchResult: (SearchResult) -> Unit,
     val onToggleFavorite: (Long) -> Unit,
+    val onDailyReminderChanged: (Boolean) -> Unit,
+    val onReminderTimeChanged: (Int) -> Unit,
+    val onBackupReminderChanged: (Boolean) -> Unit,
 )

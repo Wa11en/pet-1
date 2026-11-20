@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_settings_section">REMINDERS</string>
+    <string name="reminder_daily_title">Time for your diary</string>
+    <string name="reminder_daily_description">A gentle reminder every day</string>
+    <string name="reminder_backup_title">Save a backup</string>
+    <string name="reminder_backup_description">Once a week. Creating an encrypted backup restarts the interval.</string>
+    <string name="reminder_time_title">Reminder time</string>
+    <string name="reminder_time_save">Save</string>
+    <string name="reminder_privacy_hint">Notifications never contain text from your entries. Android may deliver reminders a little later.</string>
+    <string name="reminder_permission_denied">Notifications are disabled. Allow them in your phone settings to receive reminders.</string>
+    <string name="reminder_channel_name">Diary reminders</string>
+    <string name="reminder_channel_description">Local reminders to write and save an encrypted backup</string>
+    <string name="reminder_daily_notification_title">A moment for yourself</string>
+    <string name="reminder_daily_notification_text">Open your diary and write about your day.</string>
+    <string name="reminder_backup_notification_title">Keep a copy of your diary</string>
+    <string name="reminder_backup_notification_text">You can save an encrypted backup in the app settings.</string>
+</resources>

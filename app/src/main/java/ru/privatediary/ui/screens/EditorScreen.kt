@@ -82,6 +82,8 @@ internal fun EditorScreen(
             matchRevealed = true
         }
     }
+    val parsedTags = draft.toEntry().tags
+    val tagsValid = parsedTags.size <= 50 && parsedTags.all { it.length <= 100 }
     val latestDraft by rememberUpdatedState(draft)
     val latestOnDraftChanged by rememberUpdatedState(onDraftChanged)
     fun changeDraft(value: EditorDraft) {
@@ -131,7 +133,7 @@ internal fun EditorScreen(
                         onClick = {
                             onSave(draft.toEntry())
                         },
-                        enabled = draft.text.isNotBlank() && !busy,
+                        enabled = draft.text.isNotBlank() && tagsValid && !busy,
                         shape = CircleShape,
                         modifier = Modifier.heightIn(min = 48.dp),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
@@ -269,10 +271,11 @@ internal fun EditorScreen(
                                 }
                             }
                             OutlinedTextField(
-                                value = draft.rawTags, onValueChange = { changeDraft(latestDraft.copy(rawTags = it.take(500))) },
+                                value = draft.rawTags, onValueChange = { changeDraft(latestDraft.copy(rawTags = it.take(6000))) },
                                 label = { Text(stringResource(R.string.tags_label)) },
                                 leadingIcon = { Icon(Icons.Outlined.Tag, null, Modifier.size(19.dp)) },
-                                supportingText = { Text(stringResource(R.string.editor_tags_hint)) },
+                                supportingText = { Text(stringResource(if (tagsValid) R.string.editor_tags_hint else R.string.editor_tags_bounds)) },
+                                isError = !tagsValid,
                                 modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !busy,
                                 shape = RoundedCornerShape(16.dp),
                                 colors = OutlinedTextFieldDefaults.colors(

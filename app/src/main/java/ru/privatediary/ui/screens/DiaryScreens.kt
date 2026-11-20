@@ -85,6 +85,7 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 @Composable
 private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
+    var creationDraftPrompt by remember { mutableStateOf<ru.privatediary.domain.models.EditorDraft?>(null) }
     var favoritesOnly by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     val journalListState = rememberLazyListState()
@@ -108,7 +109,11 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     val create = {
         val timestamp = selectedDate?.atTime(LocalTime.now())?.atZone(ZoneId.systemDefault())
             ?.toInstant()?.toEpochMilli() ?: System.currentTimeMillis()
-        open(Entry(timestamp = timestamp, text = ""))
+        val existing = state.drafts.firstOrNull { it.entryId == 0L &&
+            (it.text.isNotBlank() || it.rawTags.isNotBlank() || it.mood != null) }
+        favoritesOnly = false
+        if (existing != null && localDate(existing.timestamp) != localDate(timestamp)) creationDraftPrompt = existing
+        else open(Entry(timestamp = timestamp, text = ""))
     }
     val editing = state.editorEntry
     val draft = state.editorDraft
@@ -147,6 +152,17 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
                 }
             }
         }
+    }
+    creationDraftPrompt?.let { existing ->
+        AlertDialog(onDismissRequest = { creationDraftPrompt = null },
+            title = { Text(stringResource(R.string.resume_draft)) },
+            text = { Text(stringResource(R.string.draft_other_date, formatDate(existing.timestamp))) },
+            confirmButton = { TextButton(onClick = {
+                creationDraftPrompt = null
+                selectedDate = localDate(existing.timestamp)
+                open(Entry(timestamp = existing.timestamp, text = ""))
+            }) { Text(stringResource(R.string.continue_writing)) } },
+            dismissButton = { TextButton(onClick = { creationDraftPrompt = null }) { Text(stringResource(R.string.cancel)) } })
     }
     deleteEntry?.let { entry ->
         AlertDialog(onDismissRequest = { deleteEntry = null },

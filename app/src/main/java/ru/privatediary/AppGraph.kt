@@ -15,10 +15,12 @@ import ru.privatediary.ml.search.TopicRelevanceEngine
 import ru.privatediary.security.DiarySettings
 import ru.privatediary.security.keystore.KeystoreVault
 import ru.privatediary.security.lock.PinLock
+import ru.privatediary.util.reminders.ReminderScheduler
 
 /** Manual DI. The database and model are opened lazily after authentication, off the main thread. */
 class AppGraph(private val context: Context) {
     val settings = DiarySettings(context)
+    val reminders = ReminderScheduler(context, settings)
     val lock = PinLock(context, settings)
     private val openMutex = Mutex()
     private var session: DiarySession? = null

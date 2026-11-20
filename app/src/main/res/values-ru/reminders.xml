@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_settings_section">НАПОМИНАНИЯ</string>
+    <string name="reminder_daily_title">Время для дневника</string>
+    <string name="reminder_daily_description">Ненавязчивое напоминание каждый день</string>
+    <string name="reminder_backup_title">Сохранить резервную копию</string>
+    <string name="reminder_backup_description">Раз в неделю. После создания зашифрованной копии отсчёт начинается заново.</string>
+    <string name="reminder_time_title">Время напоминаний</string>
+    <string name="reminder_time_save">Сохранить</string>
+    <string name="reminder_privacy_hint">Уведомления не содержат текст ваших записей. Android может доставить напоминание немного позже.</string>
+    <string name="reminder_permission_denied">Уведомления отключены. Разрешите их в настройках телефона, чтобы получать напоминания.</string>
+    <string name="reminder_channel_name">Напоминания дневника</string>
+    <string name="reminder_channel_description">Локальные напоминания о дневнике и зашифрованной резервной копии</string>
+    <string name="reminder_daily_notification_title">Минута для себя</string>
+    <string name="reminder_daily_notification_text">Откройте дневник и напишите о своём дне.</string>
+    <string name="reminder_backup_notification_title">Сохраните копию дневника</string>
+    <string name="reminder_backup_notification_text">Зашифрованную резервную копию можно создать в настройках приложения.</string>
+</resources>

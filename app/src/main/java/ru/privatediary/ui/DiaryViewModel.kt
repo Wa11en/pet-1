@@ -29,7 +29,9 @@ import java.util.Locale
 class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     val graph = (application as DiaryApplication).graph
     private val _state = MutableStateFlow(DiaryUiState(loading = false, onboarded = graph.lock.isConfigured,
-        timeoutSeconds = graph.settings.timeoutSeconds, biometricsEnabled = graph.settings.biometricsEnabled))
+        timeoutSeconds = graph.settings.timeoutSeconds, biometricsEnabled = graph.settings.biometricsEnabled,
+        dailyReminderEnabled = graph.settings.dailyReminderEnabled, dailyReminderMinutes = graph.settings.dailyReminderMinutes,
+        backupReminderEnabled = graph.settings.backupReminderEnabled))
     val state = _state.asStateFlow()
     private var session: DiarySession? = null
     private val indexingRequests = MutableStateFlow(0L)
@@ -100,7 +102,28 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateBiometricAvailability(available: Boolean) { _state.update { it.copy(biometricAvailable = available) } }
-    fun updateLanguage(tag: String) { _state.update { it.copy(selectedLanguage = tag) } }
+    fun updateLanguage(tag: String) {
+        val language = if (tag.substringBefore('-') == "en") "en" else "ru"
+        graph.settings.languageTag = language
+        graph.reminders.reschedule()
+        _state.update { it.copy(selectedLanguage = language) }
+    }
+    fun dailyReminderChanged(enabled: Boolean) {
+        graph.settings.dailyReminderEnabled = enabled
+        graph.reminders.reschedule()
+        _state.update { it.copy(dailyReminderEnabled = enabled) }
+    }
+    fun backupReminderChanged(enabled: Boolean) {
+        if (enabled && !graph.settings.backupReminderEnabled) graph.settings.backupReminderEnabledAt = System.currentTimeMillis()
+        graph.settings.backupReminderEnabled = enabled
+        graph.reminders.reschedule()
+        _state.update { it.copy(backupReminderEnabled = enabled) }
+    }
+    fun reminderTimeChanged(minutes: Int) {
+        graph.settings.dailyReminderMinutes = minutes
+        graph.reminders.reschedule()
+        _state.update { it.copy(dailyReminderMinutes = minutes) }
+    }
     fun createPin(pin: String, biometrics: Boolean) = operation(requireSession = false) {
         graph.settings.biometricsEnabled = biometrics && _state.value.biometricAvailable
         graph.lock.setPin(pin)
@@ -301,6 +324,8 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                     Transfer.BACKUP -> {
                         val encrypted = BackupCodec.encode(repository.allEntries(), task.password)
                         resolver.openOutputStream(uris.first(), "wt")?.use { it.write(encrypted) } ?: error("Cannot write")
+                        graph.settings.lastSuccessfulBackupAt = System.currentTimeMillis()
+                        graph.reminders.reschedule()
                     }
                     Transfer.RESTORE -> {
                         val encrypted = resolver.openInputStream(uris.first())?.use { readLimited(it, BackupCodec.MAX_FILE_BYTES) } ?: error("Cannot read")

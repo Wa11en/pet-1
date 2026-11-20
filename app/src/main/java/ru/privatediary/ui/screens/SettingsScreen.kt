@@ -128,6 +128,10 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTr
             }
         }
 
+        ReminderSettingsPanel(state.dailyReminderEnabled, state.dailyReminderMinutes, state.backupReminderEnabled,
+            enabled = enabled, onDailyEnabledChanged = actions.onDailyReminderChanged,
+            onDailyTimeChanged = actions.onReminderTimeChanged, onBackupEnabledChanged = actions.onBackupReminderChanged)
+
         SettingsGroup(R.string.settings_files_section, innerPadding = 0.dp) {
             Column {
                 SettingsActionRow(Icons.Outlined.DeleteOutline, R.string.trash_title,

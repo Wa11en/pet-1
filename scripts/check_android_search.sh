@@ -28,8 +28,8 @@ fi
 
 adb install -r "$CURRENT_APK"
 adb install -r -t "$TEST_APK"
-timeout 120s adb shell am instrument -w -r -e class "$TEST_CLASS" "$TEST_RUNNER" > "$REPORT_DIR/fixed.txt" 2>&1
+timeout 240s adb shell am instrument -w -r "$TEST_RUNNER" > "$REPORT_DIR/fixed.txt" 2>&1
 cat "$REPORT_DIR/fixed.txt"
 # adb/am can return exit code zero for failed JUnit runs; require the success summary.
-grep -Eq '^OK \(3 tests\)' "$REPORT_DIR/fixed.txt"
-echo 'All three Android search regression tests passed on the exact signed release APK.'
+grep -Eq '^OK \([1-9][0-9]* tests?\)' "$REPORT_DIR/fixed.txt"
+echo 'All Android search and encrypted data regression tests passed on the exact signed release APK.'

@@ -4,6 +4,8 @@ import ru.privatediary.ui.screens.DiaryScreens
 import ru.privatediary.ui.DiaryActions
 
 import android.os.Bundle
+import android.os.Build
+import android.content.pm.PackageManager
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -23,6 +25,16 @@ class MainActivity : AppCompatActivity() {
     private val vm: DiaryViewModel by viewModels()
     private val graph get() = (application as DiaryApplication).graph
     private lateinit var biometric: BiometricPrompt
+    private var pendingReminder: String? = null
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val kind = pendingReminder
+        pendingReminder = null
+        when (kind) {
+            "daily" -> vm.dailyReminderChanged(granted)
+            "backup" -> vm.backupReminderChanged(granted)
+        }
+        if (!granted && kind != null) vm.notify(R.string.reminder_permission_denied)
+    }
     private val importFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.fileResult(it) }
     private val restoreFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.fileResult(listOfNotNull(it)) }
     private val exportZip = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { vm.fileResult(listOfNotNull(it)) }
@@ -31,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         super.onCreate(savedInstanceState)
+        pendingReminder = savedInstanceState?.getString("pending_reminder")?.takeIf { it in setOf("daily", "backup") }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val locales = AppCompatDelegate.getApplicationLocales()
         if (locales.isEmpty) AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("ru"))
@@ -64,9 +77,28 @@ class MainActivity : AppCompatActivity() {
                     onDraftChanged = vm::draftChanged, onDiscardDraft = vm::discardDraft,
                     onRestoreEntry = vm::restoreEntry, onDeleteForever = vm::deleteForever, onDismissUndo = vm::dismissUndo,
                     onToggleFavorite = vm::toggleFavorite,
+                    onDailyReminderChanged = { setReminder("daily", it) },
+                    onBackupReminderChanged = { setReminder("backup", it) },
+                    onReminderTimeChanged = vm::reminderTimeChanged,
                 ))
             }
         }
+    }
+
+    private fun setReminder(kind: String, enabled: Boolean) {
+        if (enabled && Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            pendingReminder = kind
+            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        val allowed = !enabled || graph.reminders.canPostNotifications()
+        if (kind == "daily") vm.dailyReminderChanged(enabled && allowed) else vm.backupReminderChanged(enabled && allowed)
+        if (!allowed) vm.notify(R.string.reminder_permission_denied)
+    }
+    override fun onSaveInstanceState(outState: Bundle) {
+        pendingReminder?.let { outState.putString("pending_reminder", it) }
+        super.onSaveInstanceState(outState)
     }
 
     private fun authenticate() {
@@ -76,6 +108,6 @@ class MainActivity : AppCompatActivity() {
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .setNegativeButtonText(getString(R.string.enter_pin)).build())
     }
-    override fun onStart() { graph.lock.onForeground(); super.onStart() }
+    override fun onStart() { graph.lock.onForeground(); super.onStart(); graph.reminders.reschedule() }
     override fun onStop() { vm.flushDraft(); if (!isChangingConfigurations) graph.lock.onBackground(); super.onStop() }
 }
