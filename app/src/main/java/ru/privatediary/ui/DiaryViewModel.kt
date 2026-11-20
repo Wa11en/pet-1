@@ -28,6 +28,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     private var session: DiarySession? = null
     private val indexingRequests = MutableStateFlow(0L)
     private var searchJob: Job? = null
+    private var searchRevision = 0L
     enum class Transfer { IMPORT, MARKDOWN, BACKUP, RESTORE }
     private data class Pending(val type: Transfer, val password: CharArray, val uris: List<Uri>? = null)
     private var pending: Pending? = null
@@ -39,7 +40,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                 if (!unlocked) {
                     searchJob?.cancel()
                     _state.update { it.copy(unlocked = false, loading = false, entries = emptyList(),
-                        results = emptyList(), query = "", errorMessage = null) }
+                        results = emptyList(), searching = false, query = "", errorMessage = null) }
                 }
             }
         }
@@ -47,7 +48,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
             graph.lock.unlocked.collectLatest { unlocked ->
                 searchJob?.cancel()
                 _state.update { it.copy(onboarded = graph.lock.isConfigured, unlocked = unlocked, loading = unlocked,
-                    entries = emptyList(), results = emptyList(), query = "", errorMessage = null) }
+                    entries = emptyList(), results = emptyList(), searching = false, query = "", errorMessage = null) }
                 if (unlocked) {
                     try {
                         val opened = graph.session()
@@ -108,17 +109,25 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     fun lock() { graph.lock.lock() }
 
     private fun refreshSearch() {
+        val revision = ++searchRevision
         searchJob?.cancel()
         val snapshot = _state.value
-        if (!snapshot.unlocked || snapshot.query.isBlank()) { _state.update { it.copy(results = emptyList()) }; return }
-        val active = session ?: return
+        if (!snapshot.unlocked || snapshot.query.isBlank()) {
+            _state.update { it.copy(results = emptyList(), searching = false) }; return
+        }
+        val active = session ?: run { _state.update { it.copy(results = emptyList(), searching = false) }; return }
+        _state.update { it.copy(results = emptyList(), searching = true) }
         searchJob = viewModelScope.launch {
-            delay(250)
             try {
+                delay(250)
                 val hits = withContext(Dispatchers.Default) { active.search(snapshot.query, snapshot.searchMode == SearchMode.MEANING) }
-                if (graph.lock.unlocked.value) _state.update { it.copy(results = hits) }
+                if (revision == searchRevision && graph.lock.unlocked.value) _state.update { it.copy(results = hits) }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { _state.update { it.copy(results = emptyList(), errorMessage = message(R.string.search_error)) } }
+            catch (_: Exception) {
+                if (revision == searchRevision) _state.update { it.copy(results = emptyList(), errorMessage = message(R.string.search_error)) }
+            } finally {
+                if (revision == searchRevision) _state.update { it.copy(searching = false) }
+            }
         }
     }
 

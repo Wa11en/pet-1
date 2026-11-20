@@ -10,6 +10,7 @@ import ru.privatediary.domain.models.SearchResult
 import ru.privatediary.ml.embedder.EmbeddingEngine
 import ru.privatediary.ml.embedder.EngineAvailability
 import ru.privatediary.ml.tokenizer.TextChunk
+import ru.privatediary.ml.search.RelevanceEngine
 
 class SearchFakeRepository(var rows: List<Entry> = emptyList()) : EntryRepository {
     var wordQueries = mutableListOf<String>()
@@ -55,5 +56,24 @@ class SearchFakeVectors : EmbeddingStore {
         writes += Write(entryId, expectedTextHash, chunks)
         if (acceptWrites) stored = chunks
         return acceptWrites
+    }
+}
+
+class SearchFakeRelevance : RelevanceEngine {
+    override var availability = EngineAvailability.READY
+    var prepareCalls = 0
+    val pairs = mutableListOf<Pair<String, String>>()
+    var result: suspend (String, String) -> Boolean? = { _, _ -> true }
+    override suspend fun prepare(): EngineAvailability { prepareCalls++; return availability }
+    override suspend fun isRelevant(query: String, fragment: String): Boolean? {
+        pairs += query to fragment
+        return try {
+            result(query, fragment).also { if (it == null) availability = EngineAvailability.UNAVAILABLE }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            availability = EngineAvailability.UNAVAILABLE
+            throw error
+        }
     }
 }

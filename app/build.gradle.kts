@@ -68,8 +68,8 @@ android {
         applicationId = "ru.privatediary"
         minSdk = 26
         targetSdk = 37
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // Both languages must be available offline, including installs from App Bundles.

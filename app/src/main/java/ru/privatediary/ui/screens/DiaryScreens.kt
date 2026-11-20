@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.sp
 import ru.privatediary.R
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.domain.models.SearchResult
-import ru.privatediary.ml.search.ClosestResults
 import ru.privatediary.ui.DiaryActions
 import ru.privatediary.ui.DiaryUiState
 import ru.privatediary.ui.SearchMode
@@ -321,9 +320,6 @@ private fun TagRow(tags: List<String>) {
 private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (Entry) -> Unit) {
     val palette = MaterialTheme.colorScheme
     val highlight = palette.primaryContainer
-    val selection = remember(state.results) { ClosestResults.select(state.results) }
-    var expanded by remember(state.query, state.searchMode) { mutableStateOf(false) }
-    val visibleResults = if (expanded) selection.primary + selection.additional else selection.primary
     LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize()) {
         item {
@@ -365,29 +361,26 @@ private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (En
             }
         }
         if (state.query.isBlank()) item { SearchSuggestion() }
-        else if (visibleResults.isEmpty() && !state.busy) item {
+        else if (state.searching) item {
+            Row(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.semantic_searching), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        else if (state.results.isEmpty() && !state.busy) item {
             Column(Modifier.fillMaxWidth().padding(vertical = 36.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Outlined.SearchOff, null, Modifier.size(38.dp), tint = palette.onSurfaceVariant)
-                Text(stringResource(R.string.no_results), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
+                Text(stringResource(if (state.searchMode == SearchMode.MEANING && state.semanticAvailable)
+                    R.string.semantic_no_results else R.string.no_results),
+                    style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     color = palette.onSurfaceVariant)
             }
         }
-        if (visibleResults.isNotEmpty()) item { SectionCaption(stringResource(R.string.design_results),
-            pluralStringResource(R.plurals.design_entry_count, visibleResults.size, visibleResults.size)) }
-        items(visibleResults, key = { it.entry.id }) { result -> SearchResultCard(result, state.query, highlight, onOpen) }
-        if (selection.additional.isNotEmpty()) item {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) stringResource(R.string.semantic_hide_additional)
-                        else stringResource(R.string.semantic_show_additional, selection.additional.size))
-                }
-                Text(stringResource(R.string.semantic_additional_explanation),
-                    style = MaterialTheme.typography.bodySmall, color = palette.onSurfaceVariant,
-                    textAlign = TextAlign.Center)
-            }
-        }
+        if (state.results.isNotEmpty()) item { SectionCaption(stringResource(R.string.design_results),
+            pluralStringResource(R.plurals.design_entry_count, state.results.size, state.results.size)) }
+        items(state.results, key = { it.entry.id }) { result -> SearchResultCard(result, state.query, highlight, onOpen) }
     }
 }
 

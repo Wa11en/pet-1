@@ -1,0 +1,4 @@
+<resources>
+    <string name="semantic_searching">Searching entries…</string>
+    <string name="app_version_label">Version %1$s · fully offline</string>
+</resources>

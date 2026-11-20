@@ -7,9 +7,11 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.privatediary.data.db.DbFactory
 import ru.privatediary.data.repository.RoomEntryRepository
+import ru.privatediary.data.repository.FileTopicPrototypeCache
 import ru.privatediary.domain.usecases.SearchEntries
 import ru.privatediary.ml.embedder.OnnxEmbeddingEngine
 import ru.privatediary.ml.search.SemanticSearchService
+import ru.privatediary.ml.search.TopicRelevanceEngine
 import ru.privatediary.security.DiarySettings
 import ru.privatediary.security.keystore.KeystoreVault
 import ru.privatediary.security.lock.PinLock
@@ -29,7 +31,10 @@ class AppGraph(private val context: Context) {
                 val passphrase = KeystoreVault(context).databasePassphrase()
                 val db = try { DbFactory.create(context, passphrase) } finally { passphrase.fill(0) }
                 val repository = RoomEntryRepository(db)
-                val semantic = SemanticSearchService(OnnxEmbeddingEngine(context), repository, repository)
+                val embedder = OnnxEmbeddingEngine(context)
+                val relevance = TopicRelevanceEngine(embedder,
+                    FileTopicPrototypeCache(java.io.File(context.noBackupFilesDir, "semantic-topics")))
+                val semantic = SemanticSearchService(embedder, repository, repository, relevance)
                 DiarySession(repository, semantic, SearchEntries(repository, semantic::search)).also { session = it }
             }
         }

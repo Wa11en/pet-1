@@ -1,0 +1,242 @@
+[
+  {
+    "query": "еда",
+    "passage": "Заказал суши и съел их на ужин.",
+    "relevant": true,
+    "accepted": false
+  },
+  {
+    "query": "еда",
+    "passage": "Испёк блинчики к завтраку.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "Еда",
+    "passage": "Поел пиццу.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "food",
+    "passage": "I had a sandwich for lunch.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "еда",
+    "passage": "I ate pasta for dinner.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "игры",
+    "passage": "Прошёл сложный уровень в шутере.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "games",
+    "passage": "We played chess together.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "gaming",
+    "passage": "I won a game of Dota",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "здоровье",
+    "passage": "Сегодня сдал анализы и получил рецепт на лекарства.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "health",
+    "passage": "The dentist fixed my tooth.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "путешествие",
+    "passage": "Сел на поезд и отправился в отпуск в Петербург.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "travel",
+    "passage": "I checked into a hotel after my flight.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "сон",
+    "passage": "Лёг пораньше и проспал восемь часов.",
+    "relevant": true,
+    "accepted": false
+  },
+  {
+    "query": "sleep",
+    "passage": "I slept well all night.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "работа",
+    "passage": "Начальник попросил закончить отчёт к пятнице.",
+    "relevant": true,
+    "accepted": false
+  },
+  {
+    "query": "work",
+    "passage": "I finished the project at the office.",
+    "relevant": true,
+    "accepted": false
+  },
+  {
+    "query": "семья",
+    "passage": "Навестил бабушку и дедушку.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "family",
+    "passage": "I spent the day with my parents.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "Когда я чувствовал спокойствие?",
+    "passage": "Вечером я сидел на берегу озера, смотрел на воду и слушал птиц. Мысли перестали метаться, дыхание стало ровным, я никуда не торопился.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "When did I feel calm?",
+    "passage": "I sat by the lake at sunset, listened to birds and watched the water. My breathing slowed down, my mind stopped racing and I had nowhere to rush.",
+    "relevant": true,
+    "accepted": true
+  },
+  {
+    "query": "еда",
+    "passage": "Выиграл в доту.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "еда",
+    "passage": "выиграл в доту",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "Еда",
+    "passage": "Выиграл в доту",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "food",
+    "passage": "I won a game of Dota",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "еда",
+    "passage": "Поспал",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "игры",
+    "passage": "Поел пиццу.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "games",
+    "passage": "I cooked pasta for dinner.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "gaming",
+    "passage": "I ate pizza",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "здоровье",
+    "passage": "Купил билет на поезд.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "health",
+    "passage": "I won a game of Dota",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "путешествие",
+    "passage": "Убирался дома и мыл посуду.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "travel",
+    "passage": "I slept at home all day.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "сон",
+    "passage": "Готовил суп и жарил картошку.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "sleep",
+    "passage": "I played a video game.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "работа",
+    "passage": "Сыграл в шахматы и победил.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "work",
+    "passage": "I watched a movie after dinner.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "семья",
+    "passage": "Сдал сложный экзамен по физике.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "family",
+    "passage": "I paid my electricity bill.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "Когда я чувствовал спокойствие?",
+    "passage": "На работе сорвали сроки. Я весь день нервничал из-за дедлайна, сердце колотилось, а ночью не мог уснуть.",
+    "relevant": false,
+    "accepted": false
+  },
+  {
+    "query": "When did I feel calm?",
+    "passage": "The deadline was impossible. I worried about the presentation all day, my heart was racing and I could not sleep.",
+    "relevant": false,
+    "accepted": false
+  }
+]

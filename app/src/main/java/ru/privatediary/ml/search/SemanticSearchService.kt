@@ -15,8 +15,6 @@ import ru.privatediary.domain.models.EmbeddingChunk
 import ru.privatediary.domain.models.SearchResult
 import ru.privatediary.ml.embedder.EmbeddingEngine
 import ru.privatediary.ml.embedder.EngineAvailability
-import ru.privatediary.ml.search.EmbeddingCandidate
-import ru.privatediary.ml.search.CosineRanking
 import java.security.MessageDigest
 
 /** Serial CPU work; cancellation is checked between chunks, writes use a text-hash guard. */
@@ -24,6 +22,7 @@ class SemanticSearchService(
     private val engine: EmbeddingEngine,
     private val entries: EntryRepository,
     private val vectors: EmbeddingStore,
+    private val relevance: RelevanceEngine,
 ) {
     private val mutex = Mutex()
     private val _available = MutableStateFlow(false)
@@ -37,12 +36,22 @@ class SemanticSearchService(
         mutex.withLock {
             try {
                 _indexing.value = true
-                _available.value = engine.prepare() == EngineAvailability.READY
-                if (!_available.value) return@withLock
+                val embeddingReady = engine.prepare() == EngineAvailability.READY
+                if (!embeddingReady) {
+                    _available.value = false
+                    return@withLock
+                }
+                // Indexing can still make progress when the optional gate is unavailable,
+                // but the UI must not describe unfiltered embedding search as ready.
+                val relevanceReady = try { relevance.prepare() == EngineAvailability.READY }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { false }
+                catch (_: LinkageError) { false }
+                catch (_: OutOfMemoryError) { false }
+                _available.value = relevanceReady
                 for (entry in vectors.pendingIndexEntries()) {
                     currentCoroutineContext().ensureActive()
-                    val hash = MessageDigest.getInstance("SHA-256").digest(entry.text.toByteArray(Charsets.UTF_8))
-                        .joinToString("") { "%02x".format(it) }
+                    val hash = textHash(entry.text)
                     val chunks = engine.chunk(entry.text)
                     val embedded = ArrayList<EmbeddingChunk>()
                     for ((ordinal, chunk) in chunks.withIndex()) {
@@ -65,25 +74,83 @@ class SemanticSearchService(
     }
 
     suspend fun search(query: String): List<SearchResult>? = withContext(Dispatchers.Default) {
-        if (engine.prepare() != EngineAvailability.READY) {
+        try {
+            currentCoroutineContext().ensureActive()
+            if (engine.prepare() != EngineAvailability.READY || relevance.prepare() != EngineAvailability.READY) {
+                _available.value = false
+                return@withContext null
+            }
+            val queryVector = engine.embedQuery(query) ?: run {
+                _available.value = false
+                return@withContext null
+            }
+            require(queryVector.isNotEmpty() && queryVector.all(Float::isFinite))
+            val currentHashes = entries.allEntries().associate { it.id to textHash(it.text) }
+            val order = compareByDescending<CheckedCandidate> { it.similarity }
+                .thenBy { it.chunk.entryId }.thenBy { it.chunk.ordinal }
+            val candidates = vectors.allEmbeddings().asSequence()
+                .filter { currentHashes[it.entryId] == it.contentHash }
+                .filter { it.vector.size == queryVector.size && it.vector.all(Float::isFinite) }
+                .map { CheckedCandidate(it, VectorMath.cosine(queryVector, it.vector)) }
+                .groupBy { it.chunk.entryId }.values
+                .flatMap { chunks -> chunks.sortedWith(order).take(MAX_CHUNKS_PER_ENTRY) }
+                .sortedWith(order).take(MAX_PAIRS)
+
+            val accepted = mutableListOf<CheckedCandidate>()
+            val acceptedEntries = mutableSetOf<Long>()
+            for (candidate in candidates) {
+                currentCoroutineContext().ensureActive()
+                // Candidates are visited from best cosine to worst. Once one passes, every
+                // remaining chunk of that entry is worse and cannot improve its result.
+                if (candidate.chunk.entryId in acceptedEntries) continue
+                val relevant = relevance.isRelevant(query, candidate.chunk.fragment, candidate.chunk.vector)
+                currentCoroutineContext().ensureActive()
+                if (relevant == null) {
+                    _available.value = false
+                    return@withContext null // Never expose a partially filtered list on failure.
+                }
+                if (relevant) {
+                    accepted += candidate
+                    acceptedEntries += candidate.chunk.entryId
+                }
+            }
+
+            // A diary edit/delete can happen during native inference. Re-read content before
+            // publishing so an old accepted fragment cannot survive a concurrent mutation.
+            val freshEntries = entries.allEntries().associateBy { it.id }
+            val freshHashes = freshEntries.mapValues { (_, entry) -> textHash(entry.text) }
+            currentCoroutineContext().ensureActive()
+            val results = accepted.filter { freshHashes[it.chunk.entryId] == it.chunk.contentHash }
+                .groupBy { it.chunk.entryId }.values.map { it.minWith(order) }
+                .sortedWith(order).take(MAX_RESULTS).mapNotNull { candidate ->
+                    freshEntries[candidate.chunk.entryId]?.let { entry ->
+                        SearchResult(entry, candidate.chunk.fragment, candidate.similarity)
+                    }
+                }
+            _available.value = true
+            results // A valid rejection of every candidate is [], not an FTS fallback.
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
             _available.value = false
-            return@withContext null
-        }
-        _available.value = true
-        val queryVector = engine.embedQuery(query) ?: run {
+            null
+        } catch (_: LinkageError) {
             _available.value = false
-            return@withContext null
+            null
+        } catch (_: OutOfMemoryError) {
+            _available.value = false
+            null
         }
-        val currentEntries = entries.allEntries().associateBy { it.id }
-        val currentHashes = currentEntries.mapValues { (_, entry) ->
-            MessageDigest.getInstance("SHA-256").digest(entry.text.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
-        }
-        val chunks = vectors.allEmbeddings().filter { chunk ->
-            currentHashes[chunk.entryId] == chunk.contentHash
-        }.map { EmbeddingCandidate(it.entryId, it.fragment, it.vector) }
-        CosineRanking.rank(queryVector, chunks).mapNotNull { hit ->
-            currentEntries[hit.entryId]?.let { SearchResult(it, hit.fragment, hit.similarity) }
-        }
+    }
+
+    private data class CheckedCandidate(val chunk: EmbeddingChunk, val similarity: Float)
+
+    private companion object {
+        const val MAX_CHUNKS_PER_ENTRY = 3
+        const val MAX_PAIRS = 60
+        const val MAX_RESULTS = 30
+
+        fun textHash(text: String): String = MessageDigest.getInstance("SHA-256")
+            .digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
     }
 }

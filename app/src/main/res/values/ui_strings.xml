@@ -39,10 +39,8 @@
     <string name="search_examples">Try “when did I feel calm?” or “a walk by the water”.</string>
     <string name="no_results">No entries found. Try different words.</string>
     <string name="similarity">Similarity %1$.3f</string>
-    <string name="semantic_score_explanation">Closest entries appear first. The score is not a match percentage.</string>
-    <string name="semantic_show_additional">Show less similar entries (%1$d)</string>
-    <string name="semantic_hide_additional">Hide less similar entries</string>
-    <string name="semantic_additional_explanation">Closest entries are shown first. You can include less similar results.</string>
+    <string name="semantic_score_explanation">The model checks whether each entry relates to your query. Similarity is not a match percentage.</string>
+    <string name="semantic_no_results">No entries found on this topic. Try a more specific query.</string>
     <string name="edit_entry">Edit entry</string>
     <string name="back">Back</string>
     <string name="save">Save</string>

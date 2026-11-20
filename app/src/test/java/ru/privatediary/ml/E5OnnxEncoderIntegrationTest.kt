@@ -2,18 +2,29 @@ package ru.privatediary.ml
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import ru.privatediary.ml.embedder.E5OnnxEncoder
 import ru.privatediary.ml.search.CosineRanking
 import ru.privatediary.ml.search.EmbeddingCandidate
 import ru.privatediary.ml.search.VectorMath
-import ru.privatediary.ml.search.ClosestResults
+import ru.privatediary.ml.search.TopicRelevanceEngine
+import ru.privatediary.ml.search.SemanticSearchService
+import ru.privatediary.ml.embedder.EmbeddingEngine
+import ru.privatediary.ml.embedder.EngineAvailability
+import ru.privatediary.domain.models.EmbeddingChunk
+import ru.privatediary.domain.usecases.SearchEntries
+import ru.privatediary.testing.SearchFakeRepository
+import ru.privatediary.testing.SearchFakeVectors
+import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.domain.models.SearchResult
 import ru.privatediary.ml.tokenizer.EntryChunker
 import ru.privatediary.ml.tokenizer.SentencePieceTokenizer
 import java.io.File
+import java.security.MessageDigest
 import kotlin.math.abs
 
 /**
@@ -64,18 +75,65 @@ class E5OnnxEncoderIntegrationTest {
             val englishOnly = CosineRanking.rank(russianQuery, candidates.filter { it.entryId in setOf(3L, 4L) })
             assertEquals("Russian query should find the English meaning", 3L, englishOnly.first().entryId)
 
-            // User regression: a high background cosine must not make food and gaming look
-            // equally relevant. Exercise the real encoder, ranker and first-page selection.
+            // Exercise raw ranking separately from the actual relevance decision.
             val diary = listOf("выиграл в доту", "поел пиццу").mapIndexed { i, text ->
                 EmbeddingCandidate(i + 10L, text, encoder.embedPassage(text))
             }
             val food = CosineRanking.rank(encoder.embedQuery("еда"), diary)
             assertEquals("Food must rank pizza ahead of Dota", 11L, food.first().entryId)
-            val foodResults = food.map { SearchResult(Entry(it.entryId, 0L, it.fragment), it.fragment, it.similarity) }
-            val closest = ClosestResults.select(foodResults)
-            assertEquals(listOf(11L), closest.primary.map { it.entry.id })
-            assertEquals("The lower-ranked game remains available on request", listOf(10L), closest.additional.map { it.entry.id })
             println("Food regression: ${food.joinToString { "${it.fragment}: ${it.similarity}" }}")
+
+            val engine = object : EmbeddingEngine {
+                override val availability = EngineAvailability.READY
+                override suspend fun prepare() = availability
+                override suspend fun embedQuery(text: String) = encoder.embedQuery(text)
+                override suspend fun embedPassage(text: String) = encoder.embedPassage(text)
+                override suspend fun chunk(text: String) = EntryChunker(tokenizer).chunk(text)
+            }
+            runBlocking {
+                val relevance = TopicRelevanceEngine(engine)
+                assertEquals(EngineAvailability.READY, relevance.prepare())
+                val rows = listOf(Entry(10, 0, "выиграл в доту"), Entry(11, 0, "поел пиццу"))
+                val repository = SearchFakeRepository(rows)
+                val vectors = SearchFakeVectors()
+                fun vectorRow(entry: Entry) = EmbeddingChunk(entry.id, 0, entry.text, encoder.embedPassage(entry.text),
+                    MessageDigest.getInstance("SHA-256").digest(entry.text.toByteArray(Charsets.UTF_8))
+                        .joinToString("") { "%02x".format(it) })
+                val stored = rows.map(::vectorRow)
+                vectors.stored = stored
+                val service = SemanticSearchService(engine, repository, vectors, relevance)
+                val search = SearchEntries(repository, service::search)
+                assertEquals("Food must actually exclude the game", listOf(11L), search("еда", true).map { it.entry.id })
+                assertEquals("Games must actually exclude pizza", listOf(10L), search("игры", true).map { it.entry.id })
+
+                repository.rows = listOf(rows[0])
+                vectors.stored = listOf(stored[0])
+                assertTrue("A lone game must not be shown for food", search("еда", true).isEmpty())
+                assertTrue("A valid rejection must never fall through to words", repository.wordQueries.isEmpty())
+                assertTrue(service.available.value)
+
+                // Frozen, independently labelled RU/EN corpus. No parameter tuning in this test.
+                val fixture = javaClass.getResourceAsStream("/semantic_relevance_cases.json")
+                    ?: error("Missing semantic relevance fixture")
+                val cases = fixture.bufferedReader().use { JSONArray(it.readText()) }
+                var acceptedRelevant = 0
+                var rejectedUnrelated = 0
+                for (i in 0 until cases.length()) {
+                    val case = cases.getJSONObject(i)
+                    val query = case.getString("query")
+                    val text = case.getString("passage")
+                    val accepted = relevance.isRelevant(query, text) ?: error("The real relevance engine became unavailable")
+                    if (case.getBoolean("relevant")) {
+                        if (accepted) acceptedRelevant++
+                    } else {
+                        assertFalse("Off-topic fixture admitted: '$query' / '$text'", accepted)
+                        rejectedUnrelated++
+                    }
+                }
+                assertEquals(20, rejectedUnrelated)
+                assertTrue("At least 16/20 relevant fixtures must survive the strict gate", acceptedRelevant >= 16)
+                println("Relevance corpus: $acceptedRelevant/20 relevant retained; $rejectedUnrelated/20 unrelated rejected")
+            }
 
             // Exercise inference on the same overlapping 200-token chunks used by the app.
             val longText = (passages[0].second + " ").repeat(25)

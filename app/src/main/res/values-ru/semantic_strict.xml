@@ -1,0 +1,4 @@
+<resources>
+    <string name="semantic_searching">Ищем записи…</string>
+    <string name="app_version_label">Версия %1$s · полностью офлайн</string>
+</resources>

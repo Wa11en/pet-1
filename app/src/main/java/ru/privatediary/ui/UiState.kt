@@ -12,6 +12,7 @@ data class DiaryUiState(
     val busy: Boolean = false,
     val entries: List<Entry> = emptyList(),
     val results: List<SearchResult> = emptyList(),
+    val searching: Boolean = false,
     val query: String = "",
     val searchMode: SearchMode = SearchMode.WORDS,
     val biometricAvailable: Boolean = false,

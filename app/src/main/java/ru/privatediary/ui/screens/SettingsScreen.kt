@@ -190,6 +190,9 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Text(stringResource(R.string.app_version_label, ru.privatediary.BuildConfig.VERSION_NAME),
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     if (exportWarning) AlertDialog(
