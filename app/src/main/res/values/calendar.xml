@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_all_dates">All dates</string>
+    <string name="calendar_show_all">All entries</string>
+    <string name="calendar_day_empty">There are no entries for this day yet.</string>
+    <string name="calendar_create_on_day">Write about %1$s</string>
+    <string name="calendar_expanded">Expanded</string>
+    <string name="calendar_collapsed">Collapsed</string>
+    <string name="calendar_previous_month">Previous month</string>
+    <string name="calendar_next_month">Next month</string>
+    <string name="calendar_month_mood">Average mood this month: %1$s out of 5</string>
+    <string name="calendar_day_mood">Average mood: %1$s out of 5</string>
+    <string name="calendar_mood_unspecified">No mood ratings this month</string>
+    <string name="calendar_dot_legend">Days with entries</string>
+    <string name="calendar_today">Today</string>
+    <plurals name="calendar_entry_count">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
+</resources>

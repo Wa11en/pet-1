@@ -49,6 +49,8 @@ import ru.privatediary.ui.SearchMode
 import ru.privatediary.ui.theme.DiaryStyle
 import ru.privatediary.util.WordSearch
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -83,7 +85,9 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 @Composable
 private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     val journalListState = rememberLazyListState()
+    LaunchedEffect(selectedDate) { journalListState.scrollToItem(0) }
     val searchListState = rememberLazyListState()
     LaunchedEffect(state.query, state.searchFilters) { searchListState.scrollToItem(0) }
     var showTrash by remember { mutableStateOf(false) }
@@ -100,7 +104,11 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var deleteEntry by remember { mutableStateOf<Entry?>(null) }
     val focus = LocalFocusManager.current
     val open = actions.onOpenEntry
-    val create = { open(Entry(timestamp = System.currentTimeMillis(), text = "")) }
+    val create = {
+        val timestamp = selectedDate?.atTime(LocalTime.now())?.atZone(ZoneId.systemDefault())
+            ?.toInstant()?.toEpochMilli() ?: System.currentTimeMillis()
+        open(Entry(timestamp = timestamp, text = ""))
+    }
     val editing = state.editorEntry
     val draft = state.editorDraft
     if (editing != null && draft != null) {
@@ -128,7 +136,8 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 when (page) {
-                    Page.JOURNAL -> JournalScreen(state.entries, open, create, state.drafts, journalListState) { savedDraft ->
+                    Page.JOURNAL -> JournalScreen(state.entries, open, create, state.drafts, journalListState,
+                        selectedDate, { selectedDate = it }) { savedDraft ->
                         open(state.entries.firstOrNull { it.id == savedDraft.entryId }
                             ?: Entry(timestamp = savedDraft.timestamp, text = ""))
                     }
@@ -197,14 +206,21 @@ private fun DiaryNavigation(page: Page, onPage: (Page) -> Unit) {
 
 @Composable
 private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreate: () -> Unit,
-    drafts: List<ru.privatediary.domain.models.EditorDraft>, listState: LazyListState, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
+    drafts: List<ru.privatediary.domain.models.EditorDraft>, listState: LazyListState,
+    selectedDate: LocalDate?, onSelectDate: (LocalDate?) -> Unit, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
     val today = LocalDate.now()
     val onThisDay = remember(entries, today) { entries.filter { val date = localDate(it.timestamp)
         date.year < today.year && date.month == today.month && date.dayOfMonth == today.dayOfMonth } }
-    val groups = remember(entries) { entries.sortedByDescending { it.timestamp }.groupBy { localDate(it.timestamp) } }
+    val visibleEntries = remember(entries, selectedDate) {
+        entries.filter { selectedDate == null || localDate(it.timestamp) == selectedDate }
+    }
+    val groups = remember(visibleEntries) {
+        visibleEntries.sortedByDescending { it.timestamp }.groupBy { localDate(it.timestamp) }
+    }
     LazyColumn(state = listState, contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item(key = "invitation") { WritingInvitation(entries.isEmpty(), onCreate) }
+        item(key = "calendar") { CalendarPanel(entries, selectedDate, onSelectDate) }
         items(drafts.filter { draft ->
             val original = entries.firstOrNull { it.id == draft.entryId }
             if (draft.entryId == 0L) draft.text.isNotBlank() || draft.rawTags.isNotBlank() || draft.mood != null
@@ -223,20 +239,22 @@ private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreat
                 }
             }
         }
-        if (entries.isEmpty()) item {
+        if (visibleEntries.isEmpty()) item {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 22.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(Icons.Outlined.AutoStories, null, Modifier.padding(top = 4.dp).size(24.dp), tint = DiaryStyle.colors.accent)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.empty_journal), style = MaterialTheme.typography.titleLarge)
-                    Text(stringResource(R.string.design_empty_hint), style = MaterialTheme.typography.bodyMedium,
+                    Text(stringResource(if (selectedDate == null) R.string.empty_journal else R.string.calendar_day_empty),
+                        style = MaterialTheme.typography.titleLarge)
+                    if (selectedDate == null) Text(stringResource(R.string.design_empty_hint), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else TextButton(onClick = onCreate) { Text(stringResource(R.string.new_entry)) }
                 }
             }
         } else {
             item { SectionCaption(stringResource(R.string.design_your_entries),
-                pluralStringResource(R.plurals.design_entry_count, entries.size, entries.size)) }
+                pluralStringResource(R.plurals.design_entry_count, visibleEntries.size, visibleEntries.size)) }
         }
-        if (onThisDay.isNotEmpty()) {
+        if (selectedDate == null && onThisDay.isNotEmpty()) {
             item { Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.History, null, Modifier.size(19.dp), tint = DiaryStyle.colors.accent)
                 Text(stringResource(R.string.on_this_day), style = MaterialTheme.typography.titleLarge)

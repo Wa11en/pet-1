@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calendar_title">Календарь</string>
+    <string name="calendar_all_dates">Все даты</string>
+    <string name="calendar_show_all">Все записи</string>
+    <string name="calendar_day_empty">В этот день пока нет записей.</string>
+    <string name="calendar_create_on_day">Написать за %1$s</string>
+    <string name="calendar_expanded">Развёрнуто</string>
+    <string name="calendar_collapsed">Свёрнуто</string>
+    <string name="calendar_previous_month">Предыдущий месяц</string>
+    <string name="calendar_next_month">Следующий месяц</string>
+    <string name="calendar_month_mood">Среднее настроение за месяц: %1$s из 5</string>
+    <string name="calendar_day_mood">Среднее настроение: %1$s из 5</string>
+    <string name="calendar_mood_unspecified">В этом месяце настроение не отмечено</string>
+    <string name="calendar_dot_legend">Дни с записями</string>
+    <string name="calendar_today">Сегодня</string>
+    <plurals name="calendar_entry_count">
+        <item quantity="one">%1$d запись</item>
+        <item quantity="few">%1$d записи</item>
+        <item quantity="many">%1$d записей</item>
+        <item quantity="other">%1$d записи</item>
+    </plurals>
+</resources>
