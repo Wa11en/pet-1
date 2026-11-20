@@ -1,0 +1,7 @@
+<resources>
+    <string name="favorite_add">Add to favorites</string>
+    <string name="favorite_remove">Remove from favorites</string>
+    <string name="favorite_filter">Favorites</string>
+    <string name="favorite_empty">No favorite entries here yet</string>
+    <string name="favorite_show_all">Show all entries</string>
+</resources>

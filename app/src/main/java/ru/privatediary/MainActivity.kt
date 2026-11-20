@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
                     onOpenEntry = vm::openEntry, onCloseEditor = vm::closeEditor,
                     onDraftChanged = vm::draftChanged, onDiscardDraft = vm::discardDraft,
                     onRestoreEntry = vm::restoreEntry, onDeleteForever = vm::deleteForever, onDismissUndo = vm::dismissUndo,
+                    onToggleFavorite = vm::toggleFavorite,
                 ))
             }
         }

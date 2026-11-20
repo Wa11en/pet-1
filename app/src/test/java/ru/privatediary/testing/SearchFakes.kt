@@ -29,6 +29,7 @@ class SearchFakeRepository(var rows: List<Entry> = emptyList()) : EntryRepositor
     override suspend fun upsert(entry: Entry): Long = error("Unexpected write")
     override suspend fun importEntries(entries: List<Entry>): Unit = error("Unexpected write")
     override suspend fun delete(id: Long): Unit = error("Unexpected write")
+    override suspend fun setFavorite(id: Long, favorite: Boolean): Unit = error("Unexpected write")
     override suspend fun replaceAll(entries: List<Entry>): Unit = error("Unexpected write")
 }
 

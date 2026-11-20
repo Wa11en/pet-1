@@ -26,6 +26,7 @@ object MarkdownExporter {
                 val document = buildString {
                     append("---\ndate: ").append(quoted(instant.toString())).append('\n')
                     entry.mood?.let { append("mood: ").append(it).append('\n') }
+                    append("favorite: ").append(entry.isFavorite).append('\n')
                     append("tags: [").append(entry.tags.joinToString(", ") { quoted(it) }).append("]\n---\n\n")
                     append(entry.text).append('\n')
                 }

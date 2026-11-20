@@ -213,6 +213,18 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         operation { active.repository.deleteForever(id); _state.update { it.copy(undoEntryId = null) } }
     }
     fun dismissUndo() { _state.update { it.copy(undoEntryId = null) } }
+    fun toggleFavorite(id: Long) {
+        val active = session ?: return
+        operation {
+            val entry = active.repository.get(id) ?: return@operation
+            active.repository.setFavorite(id, !entry.isFavorite)
+            if (graph.lock.unlocked.value) _state.update {
+                it.copy(editorEntry = it.editorEntry?.let { editing ->
+                    if (editing.id == id) editing.copy(isFavorite = !entry.isFavorite) else editing
+                })
+            }
+        }
+    }
     fun queryChanged(query: String) { _state.update { it.copy(query = query.take(4096)) }; refreshSearch() }
     fun modeChanged(mode: SearchMode) { _state.update { it.copy(searchMode = mode) }; refreshSearch() }
     fun searchFiltersChanged(filters: SearchFilters) { _state.update { it.copy(searchFilters = filters) }; refreshSearch() }

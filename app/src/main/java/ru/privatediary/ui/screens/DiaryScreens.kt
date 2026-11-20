@@ -85,9 +85,10 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 @Composable
 private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
+    var favoritesOnly by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     val journalListState = rememberLazyListState()
-    LaunchedEffect(selectedDate) { journalListState.scrollToItem(0) }
+    LaunchedEffect(selectedDate, favoritesOnly) { journalListState.scrollToItem(0) }
     val searchListState = rememberLazyListState()
     LaunchedEffect(state.query, state.searchFilters) { searchListState.scrollToItem(0) }
     var showTrash by remember { mutableStateOf(false) }
@@ -115,7 +116,7 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
         EditorScreen(entry = editing, draft = draft, draftSaving = state.draftSaving, busy = state.busy,
             onClose = actions.onCloseEditor, onSave = actions.onSaveEntry, onDelete = { deleteEntry = editing },
             onDraftChanged = actions.onDraftChanged, onDiscardDraft = actions.onDiscardDraft,
-            focusSearchMatch = state.editorFocusMatch)
+            focusSearchMatch = state.editorFocusMatch, onToggleFavorite = { actions.onToggleFavorite(editing.id) })
     } else if (showTrash) {
         TrashScreen(state.trash, state.busy, onBack = { showTrash = false },
             onRestore = actions.onRestoreEntry, onDeleteForever = actions.onDeleteForever)
@@ -137,7 +138,7 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
                 if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 when (page) {
                     Page.JOURNAL -> JournalScreen(state.entries, open, create, state.drafts, journalListState,
-                        selectedDate, { selectedDate = it }) { savedDraft ->
+                        selectedDate, { selectedDate = it }, favoritesOnly, { favoritesOnly = it }, actions.onToggleFavorite) { savedDraft ->
                         open(state.entries.firstOrNull { it.id == savedDraft.entryId }
                             ?: Entry(timestamp = savedDraft.timestamp, text = ""))
                     }
@@ -207,12 +208,14 @@ private fun DiaryNavigation(page: Page, onPage: (Page) -> Unit) {
 @Composable
 private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreate: () -> Unit,
     drafts: List<ru.privatediary.domain.models.EditorDraft>, listState: LazyListState,
-    selectedDate: LocalDate?, onSelectDate: (LocalDate?) -> Unit, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
+    selectedDate: LocalDate?, onSelectDate: (LocalDate?) -> Unit, favoritesOnly: Boolean,
+    onFavoritesOnly: (Boolean) -> Unit, onToggleFavorite: (Long) -> Unit, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
     val today = LocalDate.now()
-    val onThisDay = remember(entries, today) { entries.filter { val date = localDate(it.timestamp)
+    val scopedEntries = remember(entries, favoritesOnly) { entries.filter { !favoritesOnly || it.isFavorite } }
+    val onThisDay = remember(scopedEntries, today) { scopedEntries.filter { val date = localDate(it.timestamp)
         date.year < today.year && date.month == today.month && date.dayOfMonth == today.dayOfMonth } }
-    val visibleEntries = remember(entries, selectedDate) {
-        entries.filter { selectedDate == null || localDate(it.timestamp) == selectedDate }
+    val visibleEntries = remember(scopedEntries, selectedDate) {
+        scopedEntries.filter { selectedDate == null || localDate(it.timestamp) == selectedDate }
     }
     val groups = remember(visibleEntries) {
         visibleEntries.sortedByDescending { it.timestamp }.groupBy { localDate(it.timestamp) }
@@ -220,11 +223,16 @@ private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreat
     LazyColumn(state = listState, contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item(key = "invitation") { WritingInvitation(entries.isEmpty(), onCreate) }
-        item(key = "calendar") { CalendarPanel(entries, selectedDate, onSelectDate) }
+        item(key = "calendar") { CalendarPanel(scopedEntries, selectedDate, onSelectDate) }
+        item(key = "favorites") {
+            FilterChip(selected = favoritesOnly, onClick = { onFavoritesOnly(!favoritesOnly) },
+                label = { Text(stringResource(R.string.favorite_filter)) },
+                leadingIcon = { Icon(Icons.Outlined.Star, null, Modifier.size(18.dp)) })
+        }
         items(drafts.filter { draft ->
             val original = entries.firstOrNull { it.id == draft.entryId }
             if (draft.entryId == 0L) draft.text.isNotBlank() || draft.rawTags.isNotBlank() || draft.mood != null
-            else original != null && draft.toEntry() != original
+            else original != null && draft.toEntry() != original.copy(isFavorite = false)
         }, key = { "draft-${it.entryId}" }) { draft ->
             OutlinedCard(onClick = { onResumeDraft(draft) }, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
@@ -243,9 +251,12 @@ private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreat
             Row(Modifier.padding(horizontal = 8.dp, vertical = 22.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(Icons.Outlined.AutoStories, null, Modifier.padding(top = 4.dp).size(24.dp), tint = DiaryStyle.colors.accent)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(if (selectedDate == null) R.string.empty_journal else R.string.calendar_day_empty),
+                    Text(stringResource(when { favoritesOnly -> R.string.favorite_empty; selectedDate != null -> R.string.calendar_day_empty; else -> R.string.empty_journal }),
                         style = MaterialTheme.typography.titleLarge)
-                    if (selectedDate == null) Text(stringResource(R.string.design_empty_hint), style = MaterialTheme.typography.bodyMedium,
+                    if (favoritesOnly) TextButton(onClick = { onFavoritesOnly(false); onSelectDate(null) }) {
+                        Text(stringResource(R.string.favorite_show_all))
+                    }
+                    else if (selectedDate == null) Text(stringResource(R.string.design_empty_hint), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else TextButton(onClick = onCreate) { Text(stringResource(R.string.new_entry)) }
                 }
@@ -259,7 +270,7 @@ private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreat
                 Icon(Icons.Outlined.History, null, Modifier.size(19.dp), tint = DiaryStyle.colors.accent)
                 Text(stringResource(R.string.on_this_day), style = MaterialTheme.typography.titleLarge)
             } }
-            items(onThisDay, key = { "memory-${it.id}" }) { EntryCard(it, onOpen, showDate = true) }
+            items(onThisDay, key = { "memory-${it.id}" }) { EntryCard(it, onOpen, onToggleFavorite, showDate = true) }
         }
         groups.forEach { (date, daily) ->
             item(key = "date-$date") {
@@ -267,7 +278,7 @@ private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreat
                     Modifier.padding(top = 16.dp, bottom = 2.dp), style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(daily, key = { "entry-${it.id}" }) { EntryCard(it, onOpen) }
+            items(daily, key = { "entry-${it.id}" }) { EntryCard(it, onOpen, onToggleFavorite) }
         }
     }
 }
@@ -325,7 +336,7 @@ private fun SectionCaption(title: String, trailing: String? = null) {
 }
 
 @Composable
-private fun EntryCard(entry: Entry, onOpen: (Entry) -> Unit, showDate: Boolean = false) {
+private fun EntryCard(entry: Entry, onOpen: (Entry) -> Unit, onToggleFavorite: (Long) -> Unit, showDate: Boolean = false) {
     val palette = MaterialTheme.colorScheme
     Card(onClick = { onOpen(entry) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = if (showDate) palette.tertiaryContainer.copy(alpha = 0.38f) else palette.surfaceContainerLowest),
@@ -343,6 +354,7 @@ private fun EntryCard(entry: Entry, onOpen: (Entry) -> Unit, showDate: Boolean =
                         Text("$mood/5", style = MaterialTheme.typography.labelMedium, color = palette.onSurfaceVariant)
                     }
                 }
+                FavoriteButton(entry, onToggle = onToggleFavorite)
             }
             Text(entry.text, style = MaterialTheme.typography.bodyLarge, maxLines = 5, overflow = TextOverflow.Ellipsis)
             if (entry.tags.isNotEmpty()) TagRow(entry.tags)
@@ -442,7 +454,7 @@ private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, listState: 
         }
         if (state.results.isNotEmpty()) item { SectionCaption(stringResource(R.string.design_results),
             pluralStringResource(R.plurals.design_entry_count, state.results.size, state.results.size)) }
-        items(state.results, key = { it.entry.id }) { result -> SearchResultCard(result, state.query, highlight, actions.onOpenSearchResult) }
+        items(state.results, key = { it.entry.id }) { result -> SearchResultCard(result, state.query, highlight, actions.onOpenSearchResult, actions.onToggleFavorite) }
     }
 }
 
@@ -461,7 +473,7 @@ private fun SearchSuggestion() {
 }
 
 @Composable
-private fun SearchResultCard(result: SearchResult, query: String, highlight: Color, onOpen: (SearchResult) -> Unit) {
+private fun SearchResultCard(result: SearchResult, query: String, highlight: Color, onOpen: (SearchResult) -> Unit, onToggleFavorite: (Long) -> Unit) {
     Card(onClick = { onOpen(result) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))) {
@@ -469,7 +481,8 @@ private fun SearchResultCard(result: SearchResult, query: String, highlight: Col
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Outlined.CalendarToday, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(formatDateTime(result.entry.timestamp), style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                FavoriteButton(result.entry, onToggle = onToggleFavorite)
             }
             Text(highlightFragment(result.fragment, query, result.score != null, highlight),
                 style = MaterialTheme.typography.bodyLarge, maxLines = 8, overflow = TextOverflow.Ellipsis)

@@ -11,6 +11,7 @@ interface EntryRepository {
     suspend fun upsert(entry: Entry): Long
     suspend fun importEntries(entries: List<Entry>)
     suspend fun delete(id: Long)
+    suspend fun setFavorite(id: Long, favorite: Boolean)
     suspend fun searchWords(query: String, filters: SearchFilters = SearchFilters()): List<SearchResult>
     suspend fun allEntries(): List<Entry>
     /** Atomic replace used only after backup authentication and validation. */

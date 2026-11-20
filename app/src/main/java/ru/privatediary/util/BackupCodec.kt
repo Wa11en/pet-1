@@ -22,7 +22,7 @@ object BackupCodec {
     private const val MAX_TAG_BYTES = 1024
     private const val MAX_TAGS = 128
     private const val ROUNDS = 310_000
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val HEADER_BYTES = 48
     private val magic = "PDIARYBK".toByteArray(Charsets.US_ASCII)
     private val random = SecureRandom()
@@ -62,7 +62,8 @@ object BackupCodec {
         val input = DataInputStream(ByteArrayInputStream(data))
         val storedMagic = ByteArray(magic.size).also(input::readFully)
         require(storedMagic.contentEquals(magic)) { "Not a Private Diary backup" }
-        require(input.readInt() == VERSION) { "Unsupported backup version" }
+        val version = input.readInt()
+        require(version in 1..VERSION) { "Unsupported backup version" }
         // A fixed, versioned KDF prevents untrusted files from requesting unbounded CPU work.
         require(input.readInt() == ROUNDS) { "Unsupported backup key derivation" }
         val salt = ByteArray(16).also(input::readFully)
@@ -80,7 +81,7 @@ object BackupCodec {
             key.fill(0)
         }
         return try {
-            deserialize(plaintext)
+            deserialize(plaintext, version)
         } finally {
             plaintext.fill(0)
         }
@@ -110,13 +111,14 @@ object BackupCodec {
                 writeString(out, entry.text, MAX_TEXT_BYTES)
                 out.writeInt(entry.tags.size)
                 entry.tags.forEach { writeString(out, it, MAX_TAG_BYTES) }
+                out.writeByte(if (entry.isFavorite) 1 else 0)
                 require(buffer.size() <= MAX_FILE_BYTES - HEADER_BYTES - 16) { "Backup is too large" }
             }
         }
         return buffer.toByteArray()
     }
 
-    private fun deserialize(bytes: ByteArray): List<Entry> {
+    private fun deserialize(bytes: ByteArray, version: Int): List<Entry> {
         val input = DataInputStream(ByteArrayInputStream(bytes))
         val count = input.readInt()
         require(count in 0..MAX_ENTRIES) { "Invalid entry count" }
@@ -132,7 +134,10 @@ object BackupCodec {
             val tagsCount = input.readInt()
             require(tagsCount in 0..MAX_TAGS) { "Invalid tags count" }
             val tags = List(tagsCount) { readString(input, MAX_TAG_BYTES) }
-            entries += Entry(id = id, timestamp = timestamp, text = text, mood = mood.takeIf { it != 0 }, tags = tags)
+            val favorite = if (version >= 2) input.readUnsignedByte() else 0
+            require(favorite in 0..1) { "Invalid favorite flag" }
+            entries += Entry(id = id, timestamp = timestamp, text = text, mood = mood.takeIf { it != 0 }, tags = tags,
+                isFavorite = favorite == 1)
         }
         require(input.available() == 0) { "Unexpected backup payload" }
         return entries

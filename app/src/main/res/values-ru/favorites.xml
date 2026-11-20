@@ -1,0 +1,7 @@
+<resources>
+    <string name="favorite_add">В избранное</string>
+    <string name="favorite_remove">Убрать из избранного</string>
+    <string name="favorite_filter">Избранное</string>
+    <string name="favorite_empty">Здесь пока нет избранных записей</string>
+    <string name="favorite_show_all">Показать все записи</string>
+</resources>

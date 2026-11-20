@@ -48,7 +48,8 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
     }
     override suspend fun deleteDraft(entryId: Long) { drafts.delete(entryId) }
     suspend fun saveEntryAndClearDraft(entry: Entry): Long = database.withTransaction {
-        val id = upsert(entry)
+        val existing = if (entry.id == 0L) null else entries.get(entry.id)
+        val id = upsert(entry.copy(isFavorite = existing?.isFavorite ?: entry.isFavorite))
         drafts.delete(entry.id)
         id
     }
@@ -81,6 +82,7 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         entries.restore(id, TrashPolicy.cutoff(now)) != 0
     }
     override suspend fun deleteForever(id: Long) { entries.deleteTrashed(id) }
+    override suspend fun setFavorite(id: Long, favorite: Boolean) { entries.setFavorite(id, favorite) }
     override suspend fun purgeExpired(now: Long): Int = entries.purgeExpired(TrashPolicy.cutoff(now))
     override suspend fun replaceAll(entries: List<Entry>) = database.withTransaction {
         require(entries.map { it.id }.filter { it != 0L }.distinct().size == entries.count { it.id != 0L }) { "Duplicate entry ids" }
@@ -138,7 +140,7 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
 
 private fun EntryEntity.toDomain(): Entry {
     val values = JSONArray(tags)
-    return Entry(id, timestamp, text, mood, List(values.length()) { values.getString(it) })
+    return Entry(id, timestamp, text, mood, List(values.length()) { values.getString(it) }, isFavorite)
 }
 private fun Entry.toEntity(hash: String = TextHash.of(text), indexedHash: String? = null): EntryEntity =
-    EntryEntity(id, timestamp, text, mood, JSONArray(tags).toString(), hash, indexedHash)
+    EntryEntity(id, timestamp, text, mood, JSONArray(tags).toString(), hash, indexedHash, isFavorite = isFavorite)

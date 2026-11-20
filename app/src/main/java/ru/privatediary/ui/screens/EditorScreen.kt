@@ -61,6 +61,7 @@ internal fun EditorScreen(
     onDraftChanged: (EditorDraft) -> Unit,
     onDiscardDraft: () -> Unit,
     focusSearchMatch: Boolean = false,
+    onToggleFavorite: () -> Unit,
 ) {
     var textValue by remember(draft.entryId) {
         mutableStateOf(TextFieldValue(draft.text, TextRange(
@@ -279,6 +280,11 @@ internal fun EditorScreen(
                                     focusedContainerColor = palette.paper, unfocusedContainerColor = palette.paper,
                                 ),
                             )
+                            if (entry.id != 0L) Row(verticalAlignment = Alignment.CenterVertically) {
+                                FavoriteButton(entry, enabled = !busy, onToggle = { onToggleFavorite() })
+                                Text(stringResource(if (entry.isFavorite) R.string.favorite_remove else R.string.favorite_add),
+                                    style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
                     }
                 }

@@ -64,4 +64,5 @@ data class DiaryActions(
     val onDismissUndo: () -> Unit,
     val onSearchFiltersChanged: (SearchFilters) -> Unit,
     val onOpenSearchResult: (SearchResult) -> Unit,
+    val onToggleFavorite: (Long) -> Unit,
 )

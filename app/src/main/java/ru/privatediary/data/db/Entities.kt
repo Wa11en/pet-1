@@ -12,6 +12,7 @@ data class EntryEntity(
     val contentHash: String = "",
     val indexedHash: String? = null,
     val deletedAt: Long? = null,
+    @ColumnInfo(defaultValue = "0") val isFavorite: Boolean = false,
 )
 
 @Fts4(contentEntity = EntryEntity::class, tokenizer = "unicode61")

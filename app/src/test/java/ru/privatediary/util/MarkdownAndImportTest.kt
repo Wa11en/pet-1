@@ -11,11 +11,11 @@ import java.util.zip.ZipInputStream
 class MarkdownAndImportTest {
     @Test fun zipHasUniqueSafeNamesAndUtf8TextWithMetadata() {
         val original = Entry(id = 1, timestamp = 1_763_160_425_000L, text = "День без спешки.\nAt peace.", mood = 4,
-            tags = listOf("лес", "quote\"\nnew line", "../unsafe"))
-        val bytes = MarkdownExporter.export(listOf(original, original.copy(id = 2)))
+            tags = listOf("лес", "quote\"\nnew line", "../unsafe"), isFavorite = true)
+        val bytes = MarkdownExporter.export(listOf(original, original.copy(id = 2, isFavorite = false)))
         val names = mutableSetOf<String>()
         ZipInputStream(ByteArrayInputStream(bytes), Charsets.UTF_8).use { zip ->
-            repeat(2) {
+            repeat(2) { index ->
                 val entry = requireNotNull(zip.nextEntry)
                 assertTrue(entry.name.endsWith(".md"))
                 assertFalse(entry.name.contains('/'))
@@ -24,6 +24,8 @@ class MarkdownAndImportTest {
                 assertTrue(document.contains(original.text))
                 assertTrue(document.contains("mood: 4"))
                 assertTrue(document.contains("quote\\\"\\nnew line"))
+                val frontmatter = document.substringBefore("\n---\n\n")
+                assertTrue(frontmatter.lineSequence().contains("favorite: ${index == 0}"))
                 zip.closeEntry()
             }
             assertNull(zip.nextEntry)

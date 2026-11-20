@@ -32,6 +32,8 @@ interface EntryDao {
     suspend fun purgeExpired(cutoff: Long): Int
     @Query("DELETE FROM entries WHERE rowid = :id AND deletedAt IS NOT NULL")
     suspend fun deleteTrashed(id: Long)
+    @Query("UPDATE entries SET isFavorite = :favorite WHERE rowid = :id AND deletedAt IS NULL")
+    suspend fun setFavorite(id: Long, favorite: Boolean)
 }
 
 @Dao
