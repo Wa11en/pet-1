@@ -52,7 +52,6 @@ import java.time.format.FormatStyle
 import java.util.Locale
 
 private enum class Page { JOURNAL, SEARCH, SETTINGS }
-private data class EditorSession(val entry: Entry)
 
 @Composable
 fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
@@ -82,19 +81,16 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 @Composable
 private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
-    var editor by remember { mutableStateOf<EditorSession?>(null) }
     var deleteEntry by remember { mutableStateOf<Entry?>(null) }
-    var initialSaveRevision by remember { mutableLongStateOf(state.savedRevision) }
     val focus = LocalFocusManager.current
-    LaunchedEffect(state.savedRevision) {
-        if (state.savedRevision != initialSaveRevision) { editor = null; initialSaveRevision = state.savedRevision }
-    }
-    val open: (Entry) -> Unit = { if (!state.busy) { editor = EditorSession(it); initialSaveRevision = state.savedRevision } }
+    val open = actions.onOpenEntry
     val create = { open(Entry(timestamp = System.currentTimeMillis(), text = "")) }
-    val editing = editor
-    if (editing != null) {
-        EditorScreen(editing.entry, state.busy, onClose = { editor = null },
-            onSave = actions.onSaveEntry, onDelete = { deleteEntry = editing.entry })
+    val editing = state.editorEntry
+    val draft = state.editorDraft
+    if (editing != null && draft != null) {
+        EditorScreen(entry = editing, draft = draft, draftSaving = state.draftSaving, busy = state.busy,
+            onClose = actions.onCloseEditor, onSave = actions.onSaveEntry, onDelete = { deleteEntry = editing },
+            onDraftChanged = actions.onDraftChanged, onDiscardDraft = actions.onDiscardDraft)
     } else {
         BackHandler(enabled = page != Page.JOURNAL) { focus.clearFocus(); page = Page.JOURNAL }
         Scaffold(
@@ -111,7 +107,10 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 when (page) {
-                    Page.JOURNAL -> JournalScreen(state.entries, open, create)
+                    Page.JOURNAL -> JournalScreen(state.entries, open, create, state.drafts) { savedDraft ->
+                        open(state.entries.firstOrNull { it.id == savedDraft.entryId }
+                            ?: Entry(timestamp = savedDraft.timestamp, text = ""))
+                    }
                     Page.SEARCH -> SearchScreen(state, actions, open)
                     Page.SETTINGS -> SettingsScreen(state, actions)
                 }
@@ -122,7 +121,7 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
         AlertDialog(onDismissRequest = { deleteEntry = null },
             icon = { Icon(Icons.Outlined.DeleteOutline, null) },
             title = { Text(stringResource(R.string.delete_title)) }, text = { Text(stringResource(R.string.delete_explanation)) },
-            confirmButton = { TextButton(enabled = !state.busy, onClick = { actions.onDeleteEntry(entry.id); deleteEntry = null; editor = null }) {
+            confirmButton = { TextButton(enabled = !state.busy, onClick = { actions.onDeleteEntry(entry.id); deleteEntry = null }) {
                 Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
             } }, dismissButton = { TextButton(onClick = { deleteEntry = null }) { Text(stringResource(R.string.cancel)) } })
     }
@@ -176,7 +175,8 @@ private fun DiaryNavigation(page: Page, onPage: (Page) -> Unit) {
 }
 
 @Composable
-private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreate: () -> Unit) {
+private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreate: () -> Unit,
+    drafts: List<ru.privatediary.domain.models.EditorDraft>, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
     val today = LocalDate.now()
     val onThisDay = remember(entries, today) { entries.filter { val date = localDate(it.timestamp)
         date.year < today.year && date.month == today.month && date.dayOfMonth == today.dayOfMonth } }
@@ -184,6 +184,24 @@ private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreat
     LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item(key = "invitation") { WritingInvitation(entries.isEmpty(), onCreate) }
+        items(drafts.filter { draft ->
+            val original = entries.firstOrNull { it.id == draft.entryId }
+            if (draft.entryId == 0L) draft.text.isNotBlank() || draft.rawTags.isNotBlank() || draft.mood != null
+            else original != null && draft.toEntry() != original
+        }, key = { "draft-${it.entryId}" }) { draft ->
+            OutlinedCard(onClick = { onResumeDraft(draft) }, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Outlined.EditNote, null, tint = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.resume_draft), style = MaterialTheme.typography.titleSmall)
+                        Text(draft.text.ifBlank { formatDateTime(draft.timestamp) }, maxLines = 2,
+                            overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Icon(Icons.Outlined.ChevronRight, null)
+                }
+            }
+        }
         if (entries.isEmpty()) item {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 22.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(Icons.Outlined.AutoStories, null, Modifier.padding(top = 4.dp).size(24.dp), tint = DiaryStyle.colors.accent)

@@ -78,6 +78,7 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     testOptions { unitTests.isIncludeAndroidResources = true }
+    sourceSets["androidTest"].assets.srcDir("schemas")
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     androidResources { noCompress += "onnx" }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_more_title">Дополнительно</string>
+    <string name="editor_more_hint">Настроение и теги</string>
+    <string name="editor_draft_saving">Сохраняем черновик…</string>
+    <string name="editor_draft_private">Черновик сохраняется автоматически в зашифрованной базе</string>
+    <string name="editor_remove_draft">Удалить черновик</string>
+    <string name="editor_reset_draft">Сбросить изменения</string>
+    <string name="editor_discard_draft_explanation">Черновик будет удалён. Если запись уже есть в дневнике, её сохранённая версия останется.</string>
+</resources>

@@ -29,3 +29,14 @@ interface EmbeddingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(chunks: List<EmbeddingEntity>)
     @Query("DELETE FROM embeddings WHERE entryId = :entryId") suspend fun deleteForEntry(entryId: Long)
 }
+
+@Dao
+interface DraftDao {
+    @Query("SELECT * FROM drafts ORDER BY updatedAt DESC")
+    fun observeAll(): Flow<List<DraftEntity>>
+    @Query("SELECT * FROM drafts WHERE entryId = :entryId")
+    suspend fun get(entryId: Long): DraftEntity?
+    @Upsert suspend fun upsert(draft: DraftEntity)
+    @Query("DELETE FROM drafts WHERE entryId = :entryId") suspend fun delete(entryId: Long)
+    @Query("DELETE FROM drafts") suspend fun deleteAll()
+}

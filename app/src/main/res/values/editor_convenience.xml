@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_more_title">More options</string>
+    <string name="editor_more_hint">Mood and tags</string>
+    <string name="editor_draft_saving">Saving draft…</string>
+    <string name="editor_draft_private">Draft is saved automatically in the encrypted database</string>
+    <string name="editor_remove_draft">Delete draft</string>
+    <string name="editor_reset_draft">Discard changes</string>
+    <string name="editor_discard_draft_explanation">This draft will be removed. An existing diary entry will keep its saved version.</string>
+</resources>

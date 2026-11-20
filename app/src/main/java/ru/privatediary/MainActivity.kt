@@ -59,6 +59,8 @@ class MainActivity : AppCompatActivity() {
                     onBackup = { password -> vm.beginTransfer(DiaryViewModel.Transfer.BACKUP, password); exportBackup.launch("private-diary.pdiary") },
                     onRestore = { password -> vm.beginTransfer(DiaryViewModel.Transfer.RESTORE, password); restoreFile.launch(arrayOf("application/octet-stream", "*/*")) },
                     onDismissError = vm::dismissError, onLock = vm::lock,
+                    onOpenEntry = vm::openEntry, onCloseEditor = vm::closeEditor,
+                    onDraftChanged = vm::draftChanged, onDiscardDraft = vm::discardDraft,
                 ))
             }
         }
@@ -72,5 +74,5 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButtonText(getString(R.string.enter_pin)).build())
     }
     override fun onStart() { graph.lock.onForeground(); super.onStart() }
-    override fun onStop() { if (!isChangingConfigurations) graph.lock.onBackground(); super.onStop() }
+    override fun onStop() { vm.flushDraft(); if (!isChangingConfigurations) graph.lock.onBackground(); super.onStop() }
 }

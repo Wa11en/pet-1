@@ -9,10 +9,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import ru.privatediary.DiaryApplication
 import ru.privatediary.DiarySession
 import ru.privatediary.R
 import ru.privatediary.domain.models.Entry
+import ru.privatediary.domain.models.EditorDraft
 import ru.privatediary.security.lock.PinLock
 import ru.privatediary.util.BackupCodec
 import ru.privatediary.util.MarkdownExporter
@@ -29,6 +32,10 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     private val indexingRequests = MutableStateFlow(0L)
     private var searchJob: Job? = null
     private var searchRevision = 0L
+    private val draftMutex = Mutex()
+    private var draftJob: Job? = null
+    private data class PendingDraft(val session: DiarySession, val draft: EditorDraft)
+    @Volatile private var pendingDraft: PendingDraft? = null
     enum class Transfer { IMPORT, MARKDOWN, BACKUP, RESTORE }
     private data class Pending(val type: Transfer, val password: CharArray, val uris: List<Uri>? = null)
     private var pending: Pending? = null
@@ -38,9 +45,11 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.lock.unlocked.collect { unlocked ->
                 if (!unlocked) {
+                    flushDraft()
                     searchJob?.cancel()
                     _state.update { it.copy(unlocked = false, loading = false, entries = emptyList(),
-                        results = emptyList(), searching = false, query = "", errorMessage = null) }
+                        results = emptyList(), searching = false, query = "", errorMessage = null,
+                        drafts = emptyList(), editorEntry = null, editorDraft = null, draftSaving = false) }
                 }
             }
         }
@@ -53,9 +62,13 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                     try {
                         val opened = graph.session()
                         session = opened
-                        _state.update { it.copy(loading = false) }
+                        val drafts = opened.repository.observeDrafts().first()
+                        _state.update { it.copy(loading = false, drafts = drafts) }
                         resumeTransfer()
                         coroutineScope {
+                            launch { opened.repository.observeDrafts().collect { drafts ->
+                                _state.update { it.copy(drafts = drafts) }
+                            } }
                             launch { combine(opened.repository.observeEntries().distinctUntilChanged(), indexingRequests) { entries, _ -> entries }
                                 .collectLatest { entries ->
                                 _state.update { it.copy(entries = entries) }
@@ -92,11 +105,85 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun biometricSuccess() { if (graph.settings.biometricsEnabled) graph.lock.unlockWithBiometrics() }
-    fun save(entry: Entry) = operation {
-        requireNotNull(session).repository.upsert(entry)
-        _state.update { it.copy(savedRevision = it.savedRevision + 1) }
+    fun openEntry(entry: Entry) {
+        if (!_state.value.unlocked || _state.value.busy) return
+        val active = session ?: return
+        operation {
+            val draft = draftMutex.withLock {
+                active.repository.observeDrafts().first().firstOrNull { it.entryId == entry.id }
+            } ?: EditorDraft.from(entry)
+            if (graph.lock.unlocked.value) _state.update {
+                it.copy(editorEntry = entry, editorDraft = draft, draftSaving = false)
+            }
+        }
     }
-    fun delete(id: Long) = operation { requireNotNull(session).repository.delete(id) }
+    fun draftChanged(draft: EditorDraft) {
+        val active = session ?: return
+        val state = _state.value
+        if (!state.unlocked || state.busy || state.editorEntry?.id != draft.entryId) return
+        val valid = draft.validated().copy(updatedAt = System.currentTimeMillis())
+        val request = PendingDraft(active, valid)
+        pendingDraft = request
+        _state.update { it.copy(editorDraft = valid, draftSaving = true) }
+        draftJob?.cancel()
+        draftJob = viewModelScope.launch { delay(400); persistDraft(request) }
+    }
+    private suspend fun persistDraft(request: PendingDraft) {
+        try {
+            withContext(Dispatchers.IO) {
+                draftMutex.withLock {
+                    if (pendingDraft !== request) return@withLock
+                    request.session.repository.saveDraft(request.draft)
+                    if (pendingDraft === request) {
+                        pendingDraft = null
+                        if (graph.lock.unlocked.value) _state.update { it.copy(draftSaving = false) }
+                    }
+                }
+            }
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { if (graph.lock.unlocked.value) notify(R.string.draft_save_error) }
+    }
+    /** Flush on stop even when the lock is about to hide the editor. No plaintext saved state. */
+    fun flushDraft() {
+        draftJob?.cancel()
+        val request = pendingDraft ?: return
+        draftJob = viewModelScope.launch { persistDraft(request) }
+    }
+    fun closeEditor() {
+        if (_state.value.busy) return
+        draftJob?.cancel()
+        val request = pendingDraft
+        viewModelScope.launch {
+            if (request != null) persistDraft(request)
+            if (pendingDraft == null) _state.update { it.copy(editorEntry = null, editorDraft = null) }
+        }
+    }
+    fun discardDraft() {
+        val id = _state.value.editorEntry?.id ?: return
+        val active = session ?: return
+        operation {
+            draftJob?.cancel()
+            draftMutex.withLock { active.repository.deleteDraft(id); pendingDraft = null }
+            _state.update { it.copy(editorEntry = null, editorDraft = null, draftSaving = false) }
+        }
+    }
+    fun save(entry: Entry) {
+        val active = session ?: return
+        operation {
+            draftJob?.cancel()
+            draftMutex.withLock { active.repository.saveEntryAndClearDraft(entry); pendingDraft = null }
+            _state.update { it.copy(savedRevision = it.savedRevision + 1, editorEntry = null,
+                editorDraft = null, draftSaving = false) }
+        }
+    }
+    fun delete(id: Long) {
+        val active = session ?: return
+        operation {
+            draftJob?.cancel()
+            draftMutex.withLock { active.repository.delete(id); pendingDraft = null }
+            _state.update { it.copy(editorEntry = null, editorDraft = null, draftSaving = false) }
+        }
+    }
     fun queryChanged(query: String) { _state.update { it.copy(query = query.take(4096)) }; refreshSearch() }
     fun modeChanged(mode: SearchMode) { _state.update { it.copy(searchMode = mode) }; refreshSearch() }
     fun timeoutChanged(seconds: Int) { graph.settings.timeoutSeconds = seconds; _state.update { it.copy(timeoutSeconds = seconds) } }
@@ -176,7 +263,9 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                     Transfer.RESTORE -> {
                         val encrypted = resolver.openInputStream(uris.first())?.use { readLimited(it, BackupCodec.MAX_FILE_BYTES) } ?: error("Cannot read")
                         val restored = BackupCodec.decode(encrypted, task.password)
-                        repository.replaceAll(restored)
+                        draftJob?.cancel()
+                        draftMutex.withLock { repository.replaceAll(restored); pendingDraft = null }
+                        _state.update { it.copy(editorEntry = null, editorDraft = null, drafts = emptyList()) }
                         // Even an identical snapshot has cleared embeddings and needs a new index.
                         indexingRequests.update { it + 1 }
                     }

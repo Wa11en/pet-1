@@ -1,0 +1,4 @@
+<resources>
+    <string name="resume_draft">Продолжить черновик</string>
+    <string name="draft_save_error">Не удалось сохранить черновик. Оставьте редактор открытым и повторите попытку.</string>
+</resources>

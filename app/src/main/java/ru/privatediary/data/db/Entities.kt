@@ -23,3 +23,15 @@ data class EntryFts(val text: String, val tags: String)
 data class EmbeddingEntity(val entryId: Long, val ordinal: Int, val fragment: String, val vector: ByteArray, val contentHash: String)
 
 data class FtsHit(@Embedded val entry: EntryEntity, val fragment: String)
+
+@Entity(tableName = "drafts")
+data class DraftEntity(
+    @PrimaryKey val entryId: Long,
+    val timestamp: Long,
+    val text: String,
+    val mood: Int?,
+    val rawTags: String,
+    val selectionStart: Int,
+    val selectionEnd: Int,
+    val updatedAt: Long,
+)

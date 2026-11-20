@@ -9,6 +9,7 @@ import org.json.JSONArray
 import ru.privatediary.data.db.*
 import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.EmbeddingStore
+import ru.privatediary.domain.DraftRepository
 import ru.privatediary.domain.models.*
 import ru.privatediary.util.WordSearch
 import java.nio.ByteBuffer
@@ -30,9 +31,25 @@ object FloatBlobs {
     }
 }
 
-class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, EmbeddingStore {
+class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, EmbeddingStore, DraftRepository {
     private val entries = database.entryDao()
     private val embeddings = database.embeddingDao()
+    private val drafts = database.draftDao()
+    override fun observeDrafts(): Flow<List<EditorDraft>> = drafts.observeAll().map { rows -> rows.map {
+        EditorDraft(it.entryId, it.timestamp, it.text, it.mood, it.rawTags, it.selectionStart, it.selectionEnd, it.updatedAt)
+    } }
+    override suspend fun saveDraft(draft: EditorDraft) = database.withTransaction {
+        val valid = draft.validated()
+        if (valid.entryId != 0L && entries.get(valid.entryId) == null) return@withTransaction
+        drafts.upsert(DraftEntity(valid.entryId, valid.timestamp, valid.text, valid.mood, valid.rawTags,
+            valid.selectionStart, valid.selectionEnd, valid.updatedAt))
+    }
+    override suspend fun deleteDraft(entryId: Long) { drafts.delete(entryId) }
+    suspend fun saveEntryAndClearDraft(entry: Entry): Long = database.withTransaction {
+        val id = upsert(entry)
+        drafts.delete(entry.id)
+        id
+    }
     override fun observeEntries(): Flow<List<Entry>> = entries.observeAll().map { list -> list.map { it.toDomain() } }
     override suspend fun get(id: Long): Entry? = entries.get(id)?.toDomain()
     override suspend fun allEntries(): List<Entry> = entries.all().map { it.toDomain() }
@@ -51,10 +68,11 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         entries.forEach(::validate)
         entries.forEach { this.entries.upsert(it.copy(id = 0).toEntity()) }
     }
-    override suspend fun delete(id: Long) { entries.delete(id) }
+    override suspend fun delete(id: Long) = database.withTransaction { drafts.delete(id); entries.delete(id) }
     override suspend fun replaceAll(entries: List<Entry>) = database.withTransaction {
         require(entries.map { it.id }.filter { it != 0L }.distinct().size == entries.count { it.id != 0L }) { "Duplicate entry ids" }
         entries.forEach(::validate)
+        drafts.deleteAll()
         this.entries.deleteAll()
         entries.forEach { this.entries.upsert(it.toEntity()) }
     }

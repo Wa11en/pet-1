@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -36,32 +38,50 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.privatediary.R
 import ru.privatediary.domain.models.Entry
+import ru.privatediary.domain.models.EditorDraft
 import ru.privatediary.ui.theme.DiaryStyle
 import java.time.Instant
 import java.time.ZoneId
 
-/** The draft stays only in memory; explicit save remains the persistence boundary. */
+/** Private editor state is persisted only through the encrypted draft callback. */
 @Composable
 internal fun EditorScreen(
     entry: Entry,
+    draft: EditorDraft,
+    draftSaving: Boolean,
     busy: Boolean,
     onClose: () -> Unit,
     onSave: (Entry) -> Unit,
     onDelete: () -> Unit,
+    onDraftChanged: (EditorDraft) -> Unit,
+    onDiscardDraft: () -> Unit,
 ) {
-    var text by remember(entry.id) { mutableStateOf(entry.text) }
-    var tags by remember(entry.id) { mutableStateOf(entry.tags.joinToString(", ")) }
-    var mood by remember(entry.id) { mutableStateOf(entry.mood) }
-    var timestamp by remember(entry.id) { mutableLongStateOf(entry.timestamp) }
+    var textValue by remember(draft.entryId) {
+        mutableStateOf(TextFieldValue(draft.text, TextRange(
+            draft.selectionStart.coerceIn(0, draft.text.length),
+            draft.selectionEnd.coerceIn(0, draft.text.length),
+        )))
+    }
+    val latestDraft by rememberUpdatedState(draft)
+    val latestOnDraftChanged by rememberUpdatedState(onDraftChanged)
+    fun changeDraft(value: EditorDraft) {
+        latestOnDraftChanged(value.copy(updatedAt = System.currentTimeMillis()))
+    }
+    LaunchedEffect(draft.text, draft.selectionStart, draft.selectionEnd) {
+        val selection = TextRange(draft.selectionStart.coerceIn(0, draft.text.length),
+            draft.selectionEnd.coerceIn(0, draft.text.length))
+        if (textValue.text != draft.text || textValue.selection != selection) {
+            textValue = TextFieldValue(draft.text, selection)
+        }
+    }
     var discard by remember { mutableStateOf(false) }
-    var detailsExpanded by remember(entry.id) { mutableStateOf(entry.mood != null || entry.tags.isNotEmpty()) }
+    var detailsExpanded by remember(draft.entryId) { mutableStateOf(false) }
     var dateDialog by remember { mutableStateOf<DatePickerDialog?>(null) }
     var timeDialog by remember { mutableStateOf<TimePickerDialog?>(null) }
     val latestBusy by rememberUpdatedState(busy)
     val context = LocalContext.current
     val palette = DiaryStyle.colors
-    val dirty = text != entry.text || tags != entry.tags.joinToString(", ") || mood != entry.mood || timestamp != entry.timestamp
-    val close = { if (!busy) { if (dirty) discard = true else onClose() } }
+    val close = { if (!busy) onClose() }
     BackHandler { close() }
     DisposableEffect(context) {
         onDispose { dateDialog?.dismiss(); timeDialog?.dismiss() }
@@ -89,10 +109,9 @@ internal fun EditorScreen(
                     }
                     Button(
                         onClick = {
-                            onSave(entry.copy(timestamp = timestamp, text = text, mood = mood,
-                                tags = tags.split(',').map { it.trim().removePrefix("#") }.filter(String::isNotEmpty).distinct()))
+                            onSave(draft.toEntry())
                         },
-                        enabled = text.isNotBlank() && !busy,
+                        enabled = draft.text.isNotBlank() && !busy,
                         shape = CircleShape,
                         modifier = Modifier.heightIn(min = 48.dp),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
@@ -112,26 +131,30 @@ internal fun EditorScreen(
         ) {
             Spacer(Modifier.height(12.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                val dateDescription = stringResource(R.string.editor_change_date, formatDate(timestamp))
-                EditorDatePill(formatDate(timestamp), Icons.Outlined.CalendarToday, !busy, dateDescription) {
-                    val date = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault())
+                val dateDescription = stringResource(R.string.editor_change_date, formatDate(draft.timestamp))
+                EditorDatePill(formatDate(draft.timestamp), Icons.Outlined.CalendarToday, !busy, dateDescription) {
+                    val date = Instant.ofEpochMilli(draft.timestamp).atZone(ZoneId.systemDefault())
                     dateDialog?.dismiss()
                     dateDialog = DatePickerDialog(context, { _, year, month, day ->
                         if (!latestBusy) {
-                            timestamp = date.withDayOfMonth(1).withYear(year).withMonth(month + 1).withDayOfMonth(day)
-                                .toInstant().toEpochMilli()
+                            val current = Instant.ofEpochMilli(latestDraft.timestamp).atZone(ZoneId.systemDefault())
+                            changeDraft(latestDraft.copy(timestamp = current.withDayOfMonth(1).withYear(year)
+                                .withMonth(month + 1).withDayOfMonth(day).toInstant().toEpochMilli()))
                         }
                     }, date.year, date.monthValue - 1, date.dayOfMonth).apply {
                         window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                         show()
                     }
                 }
-                val timeDescription = stringResource(R.string.editor_change_time, formatTime(timestamp))
-                EditorDatePill(formatTime(timestamp), Icons.Outlined.Schedule, !busy, timeDescription) {
-                    val date = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault())
+                val timeDescription = stringResource(R.string.editor_change_time, formatTime(draft.timestamp))
+                EditorDatePill(formatTime(draft.timestamp), Icons.Outlined.Schedule, !busy, timeDescription) {
+                    val date = Instant.ofEpochMilli(draft.timestamp).atZone(ZoneId.systemDefault())
                     timeDialog?.dismiss()
                     timeDialog = TimePickerDialog(context, { _, hour, minute ->
-                        if (!latestBusy) timestamp = date.withHour(hour).withMinute(minute).toInstant().toEpochMilli()
+                        if (!latestBusy) {
+                            val current = Instant.ofEpochMilli(latestDraft.timestamp).atZone(ZoneId.systemDefault())
+                            changeDraft(latestDraft.copy(timestamp = current.withHour(hour).withMinute(minute).toInstant().toEpochMilli()))
+                        }
                     }, date.hour, date.minute, true).apply {
                         window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                         show()
@@ -144,8 +167,14 @@ internal fun EditorScreen(
             Box(Modifier.width(36.dp).height(2.dp).background(palette.accent, CircleShape))
             Spacer(Modifier.height(22.dp))
             BasicTextField(
-                value = text,
-                onValueChange = { if (it.length <= 1_000_000) text = it },
+                value = textValue,
+                onValueChange = { value ->
+                    if (value.text.length <= 1_000_000) {
+                        textValue = value
+                        changeDraft(latestDraft.copy(text = value.text,
+                            selectionStart = value.selection.start, selectionEnd = value.selection.end))
+                    }
+                },
                 enabled = !busy,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 21.sp, lineHeight = 33.sp, color = palette.ink),
@@ -153,7 +182,7 @@ internal fun EditorScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp),
                 decorationBox = { input ->
                     Box {
-                        if (text.isEmpty()) Text(
+                        if (textValue.text.isEmpty()) Text(
                             stringResource(R.string.editor_writing_hint),
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 21.sp, lineHeight = 33.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -162,7 +191,7 @@ internal fun EditorScreen(
                     }
                 },
             )
-            if (text.length >= 1_000_000) Text(stringResource(R.string.editor_text_limit),
+            if (textValue.text.length >= 1_000_000) Text(stringResource(R.string.editor_text_limit),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Spacer(Modifier.height(28.dp))
 
@@ -182,7 +211,22 @@ internal fun EditorScreen(
                         Row(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.Outlined.Tune, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                            Text(stringResource(R.string.editor_details_title), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(stringResource(R.string.editor_more_title), style = MaterialTheme.typography.titleSmall)
+                                val tagNames = draft.rawTags.split(',').map { it.trim().removePrefix("#") }
+                                    .filter(String::isNotEmpty).distinct()
+                                val moodDescription = draft.mood?.let { stringResource(moodLabel(it)) }
+                                val tagDescription = tagNames.takeIf { it.isNotEmpty() }?.let { names ->
+                                    names.take(2).joinToString(" ") { "#$it" } +
+                                        if (names.size > 2) " +${names.size - 2}" else ""
+                                }
+                                val summary = listOfNotNull(moodDescription, tagDescription).joinToString(" · ")
+                                Text(summary.ifBlank { stringResource(R.string.editor_more_hint) },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            }
                             Icon(if (detailsExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null,
                                 Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -194,14 +238,16 @@ internal fun EditorScreen(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(stringResource(R.string.mood_optional), style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                mood?.let { Text(stringResource(moodLabel(it)), style = MaterialTheme.typography.labelMedium,
+                                draft.mood?.let { Text(stringResource(moodLabel(it)), style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary) }
                             }
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                for (value in 1..5) EditorMoodChoice(value, mood == value, !busy) { mood = if (mood == value) null else value }
+                                for (value in 1..5) EditorMoodChoice(value, draft.mood == value, !busy) {
+                                    changeDraft(latestDraft.copy(mood = if (latestDraft.mood == value) null else value))
+                                }
                             }
                             OutlinedTextField(
-                                value = tags, onValueChange = { tags = it.take(500) },
+                                value = draft.rawTags, onValueChange = { changeDraft(latestDraft.copy(rawTags = it.take(500))) },
                                 label = { Text(stringResource(R.string.tags_label)) },
                                 leadingIcon = { Icon(Icons.Outlined.Tag, null, Modifier.size(19.dp)) },
                                 supportingText = { Text(stringResource(R.string.editor_tags_hint)) },
@@ -219,7 +265,11 @@ internal fun EditorScreen(
             Spacer(Modifier.height(20.dp))
             Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(stringResource(R.string.editor_private_note), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(if (draftSaving) R.string.editor_draft_saving else R.string.editor_draft_private), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = { discard = true }, enabled = !busy) {
+                Text(stringResource(if (entry.id == 0L) R.string.editor_remove_draft else R.string.editor_reset_draft),
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(32.dp))
@@ -227,9 +277,9 @@ internal fun EditorScreen(
     }
     if (discard) AlertDialog(
         onDismissRequest = { discard = false },
-        title = { Text(stringResource(R.string.discard_title)) },
-        text = { Text(stringResource(R.string.discard_explanation)) },
-        confirmButton = { TextButton(onClick = onClose, enabled = !busy) { Text(stringResource(R.string.discard)) } },
+        title = { Text(stringResource(if (entry.id == 0L) R.string.editor_remove_draft else R.string.editor_reset_draft)) },
+        text = { Text(stringResource(R.string.editor_discard_draft_explanation)) },
+        confirmButton = { TextButton(onClick = onDiscardDraft, enabled = !busy) { Text(stringResource(R.string.discard)) } },
         dismissButton = { TextButton(onClick = { discard = false }, enabled = !busy) { Text(stringResource(R.string.continue_writing)) } },
     )
 }
