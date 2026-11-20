@@ -81,6 +81,17 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 @Composable
 private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
+    var showTrash by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val movedMessage = stringResource(R.string.trash_moved)
+    val undoLabel = stringResource(R.string.trash_undo)
+    LaunchedEffect(state.undoRevision) {
+        val id = state.undoEntryId ?: return@LaunchedEffect
+        val result = snackbar.showSnackbar(movedMessage, undoLabel, withDismissAction = true,
+            duration = SnackbarDuration.Long)
+        if (result == SnackbarResult.ActionPerformed) actions.onRestoreEntry(id)
+        actions.onDismissUndo()
+    }
     var deleteEntry by remember { mutableStateOf<Entry?>(null) }
     val focus = LocalFocusManager.current
     val open = actions.onOpenEntry
@@ -91,12 +102,16 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
         EditorScreen(entry = editing, draft = draft, draftSaving = state.draftSaving, busy = state.busy,
             onClose = actions.onCloseEditor, onSave = actions.onSaveEntry, onDelete = { deleteEntry = editing },
             onDraftChanged = actions.onDraftChanged, onDiscardDraft = actions.onDiscardDraft)
+    } else if (showTrash) {
+        TrashScreen(state.trash, state.busy, onBack = { showTrash = false },
+            onRestore = actions.onRestoreEntry, onDeleteForever = actions.onDeleteForever)
     } else {
         BackHandler(enabled = page != Page.JOURNAL) { focus.clearFocus(); page = Page.JOURNAL }
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = { PageHeader(page, actions.onLock) },
             bottomBar = { DiaryNavigation(page) { focus.clearFocus(); page = it } },
+            snackbarHost = { SnackbarHost(snackbar) },
             floatingActionButton = {
                 if (page == Page.JOURNAL && state.entries.isNotEmpty()) ExtendedFloatingActionButton(
                     onClick = create, containerColor = DiaryStyle.colors.cover, contentColor = DiaryStyle.colors.onCover,
@@ -112,7 +127,7 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
                             ?: Entry(timestamp = savedDraft.timestamp, text = ""))
                     }
                     Page.SEARCH -> SearchScreen(state, actions, open)
-                    Page.SETTINGS -> SettingsScreen(state, actions)
+                    Page.SETTINGS -> SettingsScreen(state, actions, onOpenTrash = { showTrash = true })
                 }
             }
         }
@@ -120,7 +135,7 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     deleteEntry?.let { entry ->
         AlertDialog(onDismissRequest = { deleteEntry = null },
             icon = { Icon(Icons.Outlined.DeleteOutline, null) },
-            title = { Text(stringResource(R.string.delete_title)) }, text = { Text(stringResource(R.string.delete_explanation)) },
+            title = { Text(stringResource(R.string.delete_title)) }, text = { Text(stringResource(R.string.trash_delete_explanation)) },
             confirmButton = { TextButton(enabled = !state.busy, onClick = { actions.onDeleteEntry(entry.id); deleteEntry = null }) {
                 Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
             } }, dismissButton = { TextButton(onClick = { deleteEntry = null }) { Text(stringResource(R.string.cancel)) } })

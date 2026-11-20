@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-@Database(entities = [EntryEntity::class, EntryFts::class, EmbeddingEntity::class, DraftEntity::class], version = 2, exportSchema = true)
+@Database(entities = [EntryEntity::class, EntryFts::class, EmbeddingEntity::class, DraftEntity::class], version = 3, exportSchema = true)
 abstract class DiaryDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
     abstract fun embeddingDao(): EmbeddingDao
@@ -16,6 +16,9 @@ abstract class DiaryDatabase : RoomDatabase() {
 }
 
 object DbFactory {
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE entries ADD COLUMN deletedAt INTEGER") }
+    }
     val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("CREATE TABLE IF NOT EXISTS drafts (entryId INTEGER NOT NULL, timestamp INTEGER NOT NULL, text TEXT NOT NULL, mood INTEGER, rawTags TEXT NOT NULL, selectionStart INTEGER NOT NULL, selectionEnd INTEGER NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(entryId))")
@@ -27,7 +30,7 @@ object DbFactory {
         val keyCopy = passphrase.copyOf()
         val database = Room.databaseBuilder(context.applicationContext, DiaryDatabase::class.java, name)
             .openHelperFactory(SupportOpenHelperFactory(keyCopy))
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
         return try { database.openHelper.writableDatabase; database }
             catch (failure: Throwable) { database.close(); keyCopy.fill(0); throw failure }

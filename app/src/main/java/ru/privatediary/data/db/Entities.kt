@@ -10,7 +10,8 @@ data class EntryEntity(
     val mood: Int?,
     val tags: String,
     val contentHash: String = "",
-    val indexedHash: String? = null
+    val indexedHash: String? = null,
+    val deletedAt: Long? = null,
 )
 
 @Fts4(contentEntity = EntryEntity::class, tokenizer = "unicode61")

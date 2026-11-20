@@ -2,6 +2,7 @@ package ru.privatediary.ui
 
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.domain.models.EditorDraft
+import ru.privatediary.domain.models.TrashedEntry
 import ru.privatediary.domain.models.SearchResult
 
 enum class SearchMode { WORDS, MEANING }
@@ -29,6 +30,9 @@ data class DiaryUiState(
     val editorEntry: Entry? = null,
     val editorDraft: EditorDraft? = null,
     val draftSaving: Boolean = false,
+    val trash: List<TrashedEntry> = emptyList(),
+    val undoEntryId: Long? = null,
+    val undoRevision: Long = 0,
 )
 
 data class DiaryActions(
@@ -52,4 +56,7 @@ data class DiaryActions(
     val onCloseEditor: () -> Unit,
     val onDraftChanged: (EditorDraft) -> Unit,
     val onDiscardDraft: () -> Unit,
+    val onRestoreEntry: (Long) -> Unit,
+    val onDeleteForever: (Long) -> Unit,
+    val onDismissUndo: () -> Unit,
 )

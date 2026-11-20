@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Корзина</string>
+    <string name="trash_description">Удалённые записи можно восстановить в течение 30 дней. После этого они удаляются автоматически.</string>
+    <string name="trash_moved">Запись перемещена в корзину</string>
+    <string name="trash_undo">Отменить</string>
+    <string name="trash_delete_explanation">Запись переместится в корзину на 30 дней. В течение этого времени её можно восстановить.</string>
+    <string name="trash_empty">Корзина пуста</string>
+    <string name="trash_empty_hint">Здесь появятся удалённые записи.</string>
+    <string name="trash_restore">Восстановить</string>
+    <string name="trash_delete_forever">Удалить навсегда</string>
+    <string name="trash_delete_forever_title">Удалить запись навсегда?</string>
+    <string name="trash_delete_forever_explanation">Запись будет удалена из корзины. Восстановить её оттуда будет невозможно.</string>
+    <plurals name="trash_days_left">
+        <item quantity="one">До удаления остался %1$d день</item>
+        <item quantity="few">До удаления осталось %1$d дня</item>
+        <item quantity="many">До удаления осталось %1$d дней</item>
+        <item quantity="other">До удаления осталось %1$d дня</item>
+    </plurals>
+</resources>

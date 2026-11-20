@@ -49,7 +49,8 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                     searchJob?.cancel()
                     _state.update { it.copy(unlocked = false, loading = false, entries = emptyList(),
                         results = emptyList(), searching = false, query = "", errorMessage = null,
-                        drafts = emptyList(), editorEntry = null, editorDraft = null, draftSaving = false) }
+                        drafts = emptyList(), editorEntry = null, editorDraft = null, draftSaving = false,
+                        trash = emptyList(), undoEntryId = null) }
                 }
             }
         }
@@ -62,10 +63,13 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                     try {
                         val opened = graph.session()
                         session = opened
+                        opened.repository.purgeExpired()
                         val drafts = opened.repository.observeDrafts().first()
                         _state.update { it.copy(loading = false, drafts = drafts) }
                         resumeTransfer()
                         coroutineScope {
+                            launch { opened.repository.observeTrash().collect { trash -> _state.update { it.copy(trash = trash) } } }
+                            launch { while (isActive) { delay(60 * 60 * 1000L); opened.repository.purgeExpired() } }
                             launch { opened.repository.observeDrafts().collect { drafts ->
                                 _state.update { it.copy(drafts = drafts) }
                             } }
@@ -181,9 +185,22 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         operation {
             draftJob?.cancel()
             draftMutex.withLock { active.repository.delete(id); pendingDraft = null }
-            _state.update { it.copy(editorEntry = null, editorDraft = null, draftSaving = false) }
+            _state.update { it.copy(editorEntry = null, editorDraft = null, draftSaving = false,
+                undoEntryId = id, undoRevision = it.undoRevision + 1) }
         }
     }
+    fun restoreEntry(id: Long) {
+        val active = session ?: return
+        operation {
+            if (!active.repository.restore(id)) { active.repository.purgeExpired(); notify(R.string.trash_expired) }
+            _state.update { it.copy(undoEntryId = null) }
+        }
+    }
+    fun deleteForever(id: Long) {
+        val active = session ?: return
+        operation { active.repository.deleteForever(id); _state.update { it.copy(undoEntryId = null) } }
+    }
+    fun dismissUndo() { _state.update { it.copy(undoEntryId = null) } }
     fun queryChanged(query: String) { _state.update { it.copy(query = query.take(4096)) }; refreshSearch() }
     fun modeChanged(mode: SearchMode) { _state.update { it.copy(searchMode = mode) }; refreshSearch() }
     fun timeoutChanged(seconds: Int) { graph.settings.timeoutSeconds = seconds; _state.update { it.copy(timeoutSeconds = seconds) } }
@@ -265,7 +282,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                         val restored = BackupCodec.decode(encrypted, task.password)
                         draftJob?.cancel()
                         draftMutex.withLock { repository.replaceAll(restored); pendingDraft = null }
-                        _state.update { it.copy(editorEntry = null, editorDraft = null, drafts = emptyList()) }
+                        _state.update { it.copy(editorEntry = null, editorDraft = null, drafts = emptyList(), undoEntryId = null) }
                         // Even an identical snapshot has cleared embeddings and needs a new index.
                         indexingRequests.update { it + 1 }
                     }

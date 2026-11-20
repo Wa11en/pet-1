@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Trash</string>
+    <string name="trash_description">You can restore deleted entries for 30 days. After that, they are removed automatically.</string>
+    <string name="trash_moved">Entry moved to trash</string>
+    <string name="trash_undo">Undo</string>
+    <string name="trash_delete_explanation">This entry will be kept in the trash for 30 days. You can restore it during that time.</string>
+    <string name="trash_empty">The trash is empty</string>
+    <string name="trash_empty_hint">Deleted entries will appear here.</string>
+    <string name="trash_restore">Restore</string>
+    <string name="trash_delete_forever">Delete permanently</string>
+    <string name="trash_delete_forever_title">Delete this entry permanently?</string>
+    <string name="trash_delete_forever_explanation">The entry will be removed from the trash and cannot be restored there.</string>
+    <plurals name="trash_days_left">
+        <item quantity="one">%1$d day until permanent deletion</item>
+        <item quantity="other">%1$d days until permanent deletion</item>
+    </plurals>
+</resources>

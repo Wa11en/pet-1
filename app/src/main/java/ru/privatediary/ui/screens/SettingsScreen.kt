@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
@@ -41,7 +42,7 @@ import ru.privatediary.ui.DiaryActions
 import ru.privatediary.ui.DiaryUiState
 
 @Composable
-internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions) {
+internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTrash: () -> Unit) {
     var passwordAction by remember { mutableStateOf<String?>(null) }
     var exportWarning by remember { mutableStateOf(false) }
     val enabled = !state.busy
@@ -129,6 +130,9 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions) {
 
         SettingsGroup(R.string.settings_files_section, innerPadding = 0.dp) {
             Column {
+                SettingsActionRow(Icons.Outlined.DeleteOutline, R.string.trash_title,
+                    R.string.trash_description, enabled, onOpenTrash)
+                ActionDivider()
                 SettingsActionRow(Icons.AutoMirrored.Outlined.NoteAdd, R.string.import_files,
                     R.string.settings_import_support, enabled, actions.onImport)
                 ActionDivider()

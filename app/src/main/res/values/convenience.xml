@@ -1,4 +1,5 @@
 <resources>
     <string name="resume_draft">Continue draft</string>
     <string name="draft_save_error">Could not save the draft. Keep the editor open and try again.</string>
+    <string name="trash_expired">The entry has expired or is no longer in the trash.</string>
 </resources>

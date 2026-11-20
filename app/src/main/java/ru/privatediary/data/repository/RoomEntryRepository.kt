@@ -10,6 +10,7 @@ import ru.privatediary.data.db.*
 import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.EmbeddingStore
 import ru.privatediary.domain.DraftRepository
+import ru.privatediary.domain.TrashRepository
 import ru.privatediary.domain.models.*
 import ru.privatediary.util.WordSearch
 import java.nio.ByteBuffer
@@ -31,7 +32,7 @@ object FloatBlobs {
     }
 }
 
-class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, EmbeddingStore, DraftRepository {
+class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, EmbeddingStore, DraftRepository, TrashRepository {
     private val entries = database.entryDao()
     private val embeddings = database.embeddingDao()
     private val drafts = database.draftDao()
@@ -57,6 +58,7 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         validate(entry)
         val hash = TextHash.of(entry.text)
         val previous = if (entry.id != 0L) entries.get(entry.id) else null
+        require(entry.id == 0L || previous != null) { "Entry no longer exists" }
         val row = entry.toEntity(hash, previous?.indexedHash?.takeIf { previous.contentHash == hash })
         val inserted = entries.upsert(row)
         val id = if (entry.id != 0L) entry.id else inserted
@@ -68,7 +70,17 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         entries.forEach(::validate)
         entries.forEach { this.entries.upsert(it.copy(id = 0).toEntity()) }
     }
-    override suspend fun delete(id: Long) = database.withTransaction { drafts.delete(id); entries.delete(id) }
+    override suspend fun delete(id: Long) = database.withTransaction {
+        entries.moveToTrash(id, System.currentTimeMillis()); drafts.delete(id)
+    }
+    override fun observeTrash(): Flow<List<TrashedEntry>> = entries.observeTrash().map { rows ->
+        rows.map { TrashedEntry(it.toDomain(), requireNotNull(it.deletedAt)) }
+    }
+    override suspend fun restore(id: Long, now: Long): Boolean = database.withTransaction {
+        entries.restore(id, TrashPolicy.cutoff(now)) != 0
+    }
+    override suspend fun deleteForever(id: Long) { entries.deleteTrashed(id) }
+    override suspend fun purgeExpired(now: Long): Int = entries.purgeExpired(TrashPolicy.cutoff(now))
     override suspend fun replaceAll(entries: List<Entry>) = database.withTransaction {
         require(entries.map { it.id }.filter { it != 0L }.distinct().size == entries.count { it.id != 0L }) { "Duplicate entry ids" }
         entries.forEach(::validate)
