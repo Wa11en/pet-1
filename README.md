@@ -147,6 +147,8 @@ Runtime — `com.microsoft.onnxruntime:onnxruntime-android:1.23.2`: мобиль
 
 ## Проверки
 
+Для 0.6.0 прошли **132 модульных теста** (включая настоящую ONNX-модель, без пропусков), lint с нулём ошибок, проверки INTERNET для debug/release и **18 инструментальных тестов на Android 35 x86_64**. [Прогон готового подписанного APK](https://github.com/Wa11en/pet-1/actions/runs/44809691569) проверяет поиск, SQLCipher, обновление настоящей схемы v1 до v4, черновики, корзину и избранное перед публикацией.
+
 Unit-тесты проверяют chunking/перекрытие/Unicode, masked mean pooling и L2, cosine ranking, SentencePiece/Viterbi/нормализацию, fallback и отмену индексации, настоящие SQLite FTS4-запросы RU/EN, backup roundtrip/неверный пароль/повреждение/ограничения, ZIP и импорт, а также отсутствие INTERNET.
 
 Опциональный тест эталонного словаря включается после fetch или с уже имеющимся локальным файлом (тест ничего не скачивает):
