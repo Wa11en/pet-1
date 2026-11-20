@@ -3,11 +3,14 @@ package ru.privatediary.data.repository
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import org.json.JSONArray
 import ru.privatediary.data.db.*
 import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.EmbeddingStore
 import ru.privatediary.domain.models.*
+import ru.privatediary.util.WordSearch
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
@@ -56,9 +59,26 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         entries.forEach { this.entries.upsert(it.toEntity()) }
     }
     override suspend fun searchWords(query: String): List<SearchResult> {
+        val fragments = WordSearch.prepare(query)
+        if (fragments.isEmpty) return emptyList()
         val expression = FtsQuery.fromUserInput(query)
-        if (expression.isBlank()) return emptyList()
-        return entries.search(expression).map { SearchResult(it.entry.toDomain(), it.fragment.ifBlank { it.entry.text.take(260) }) }
+        // FTS supplies its contextual snippets for indexed prefixes; scanning encrypted rows
+        // also finds infixes, which SQLite FTS4 cannot express. SQLite LOWER/NOCASE is not
+        // sufficient for case-insensitive Cyrillic on every supported Android version.
+        val indexed = if (expression.isBlank()) emptyMap() else entries.search(expression).associateBy { it.entry.id }
+        currentCoroutineContext().ensureActive()
+        val results = ArrayList<SearchResult>()
+        for (row in entries.all()) {
+            currentCoroutineContext().ensureActive()
+            val entry = row.toDomain()
+            if (!fragments.matches(entry.text, entry.tags)) continue
+            val indexedFragment = indexed[entry.id]?.fragment
+            val fragment = indexedFragment?.takeIf { fragments.rangesIn(it).isNotEmpty() }
+                ?: fragments.fragment(entry.text)
+            results += SearchResult(entry, fragment)
+            if (results.size == 100) break
+        }
+        return results
     }
     override suspend fun pendingIndexEntries(): List<Entry> = entries.pending().map { it.toDomain() }
     override suspend fun allEmbeddings(): List<EmbeddingChunk> = embeddings.all().map {

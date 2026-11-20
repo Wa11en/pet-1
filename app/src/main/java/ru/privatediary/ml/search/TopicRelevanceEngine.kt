@@ -9,10 +9,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.privatediary.ml.embedder.EmbeddingEngine
 import ru.privatediary.ml.embedder.EngineAvailability
+import ru.privatediary.util.WordSearch
+import ru.privatediary.util.WordMorphology
 
 /**
- * Conservative compatibility check against fixed bilingual broad domains. This is not an
- * open-world relevance classifier: uncertain queries and conflicting domains are rejected.
+ * Open-query relevance check with fixed bilingual domains as background comparisons.
+ * Confident domain conflicts are rejected; queries outside those domains can compete
+ * directly with the background descriptions. No catalog membership is required.
  * Its decision is independent of which other entries happen to exist in the diary.
  */
 class TopicRelevanceEngine(
@@ -22,7 +25,7 @@ class TopicRelevanceEngine(
     private val mutex = Mutex()
     private var prototypes: List<FloatArray>? = null
     private var memoizedQuery: String? = null
-    private var memoizedTopic: Int? = null
+    private var memoizedEvidence: QueryEvidence? = null
 
     @Volatile override var availability = EngineAvailability.MODEL_MISSING
         private set
@@ -50,14 +53,27 @@ class TopicRelevanceEngine(
                     currentCoroutineContext().ensureActive()
                     if (query.isBlank() || fragment.isBlank()) return@withLock false
                     if (prepareLocked() != EngineAvailability.READY) return@withLock null
-                    val queryTopic = selectQueryTopic(query) ?: return@withLock false
+                    suppliedEmbedding?.let { require(validVector(it)) { "Invalid passage vector" } }
+                    // Literal words and supported word forms are positive evidence, including
+                    // mixed-topic entries. Raw character infixes are not semantic evidence:
+                    // "еда" in "победа" and "cat" in "education" must not bypass the model.
+                    if (WordSearch.prepare(query).matchesWholeWords(fragment) ||
+                        WordMorphology.prepare(query).matches(fragment)) return@withLock true
+                    val evidence = selectQueryEvidence(query)
                     val passage = suppliedEmbedding ?: engine.embedPassage(fragment)
                         ?: error("Passage embedding unavailable")
                     currentCoroutineContext().ensureActive()
                     require(validVector(passage)) { "Invalid passage vector" }
                     val scores = scores(passage, TopicCatalog.languageOf(fragment), TopicCatalog.Prefix.QUERY)
                     val best = scores.maxOrNull() ?: return@withLock false
-                    best - scores[queryTopic] <= ENTRY_TOPIC_WINDOW + FLOAT_TOLERANCE
+                    if (evidence.confident) {
+                        best - scores[evidence.topic] <= ENTRY_TOPIC_WINDOW + FLOAT_TOLERANCE
+                    } else {
+                        // The user's own query is an additional, unrestricted description.
+                        // It must compete with the strongest background description for this
+                        // entry, rather than pass a universal raw-cosine cutoff.
+                        VectorMath.cosine(evidence.vector, passage) + OPEN_QUERY_WINDOW + FLOAT_TOLERANCE >= best
+                    }
                 } catch (cancelled: CancellationException) {
                     disable()
                     throw cancelled
@@ -115,17 +131,18 @@ class TopicRelevanceEngine(
         return availability
     }
 
-    private suspend fun selectQueryTopic(query: String): Int? {
-        if (memoizedQuery == query) return memoizedTopic
+    private suspend fun selectQueryEvidence(query: String): QueryEvidence {
+        if (memoizedQuery == query) return checkNotNull(memoizedEvidence)
         val vector = engine.embedQuery(query) ?: error("Query embedding unavailable")
         currentCoroutineContext().ensureActive()
         require(validVector(vector)) { "Invalid query vector" }
         val scores = scores(vector, TopicCatalog.languageOf(query), TopicCatalog.Prefix.PASSAGE)
         val ordered = scores.indices.sortedWith(compareByDescending<Int> { scores[it] }.thenBy { it })
         val best = ordered[0]
-        val selected = if (scores[best] - scores[ordered[1]] + FLOAT_TOLERANCE >= QUERY_TOPIC_GAP) best else null
+        val selected = QueryEvidence(vector.copyOf(), best,
+            scores[best] - scores[ordered[1]] + FLOAT_TOLERANCE >= QUERY_TOPIC_GAP)
         memoizedQuery = query
-        memoizedTopic = selected
+        memoizedEvidence = selected
         return selected
     }
 
@@ -143,16 +160,19 @@ class TopicRelevanceEngine(
     private fun disable(state: EngineAvailability = EngineAvailability.UNAVAILABLE): EngineAvailability {
         availability = state
         memoizedQuery = null
-        memoizedTopic = null
+        memoizedEvidence = null
         return state
     }
 
     private companion object {
         const val QUERY_TOPIC_GAP = 0.015f
         const val ENTRY_TOPIC_WINDOW = 0.01f
+        const val OPEN_QUERY_WINDOW = 0.02f
         const val FLOAT_TOLERANCE = 0.000001f
 
         fun validVector(vector: FloatArray): Boolean = vector.size == TopicPrototypeCodec.DIMENSIONS &&
             vector.all(Float::isFinite) && vector.sumOf { it.toDouble() * it } in 0.99..1.01
     }
+
+    private data class QueryEvidence(val vector: FloatArray, val topic: Int, val confident: Boolean)
 }

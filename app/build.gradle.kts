@@ -68,8 +68,8 @@ android {
         applicationId = "ru.privatediary"
         minSdk = 26
         targetSdk = 37
-        versionCode = 5
-        versionName = "0.4.0"
+        versionCode = 6
+        versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // Both languages must be available offline, including installs from App Bundles.
@@ -128,6 +128,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
+    implementation("com.github.rholder:snowball-stemmer:1.3.0.581.1")
     testImplementation("org.json:json:20250517")
     testImplementation("junit:junit:4.13.2")
     // CPU native library for explicitly requested JVM model tests only; never included in the Android APK.

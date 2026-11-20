@@ -112,6 +112,39 @@ class E5OnnxEncoderIntegrationTest {
                 assertTrue("A valid rejection must never fall through to words", repository.wordQueries.isEmpty())
                 assertTrue(service.available.value)
 
+                val games = listOf(Entry(20, 0, "поиграл в контру"), Entry(21, 0, "выиграл в доту"),
+                    Entry(22, 0, "поел пиццу"))
+                repository.rows = games
+                vectors.stored = games.map(::vectorRow)
+                assertEquals("The reported word fragment must work in meaning mode too", setOf(20L, 21L),
+                    search("игра", true).map { it.entry.id }.toSet())
+                assertTrue("Inflected game names do not need a catalog entry",
+                    search("контра", true).any { it.entry.id == 20L })
+                assertTrue(search("дота", true).any { it.entry.id == 21L })
+
+                // Real open-vocabulary meanings: these have no matching lexical root and
+                // could not pass the former mandatory topic-selection rule.
+                val openCases = listOf(
+                    Triple("кот", "Сегодня гладил пушистую кошку, она мурлыкала.", true),
+                    Triple("кот", "Выиграл в доту.", false),
+                    Triple("cats", "I stroked my kitten while it purred.", true),
+                    Triple("cats", "I won at Dota.", false),
+                    Triple("coding", "I fixed a bug in my Kotlin program.", true),
+                    Triple("coding", "I ate pizza for lunch.", false),
+                    Triple("программирование", "Написал программу на Kotlin, исправил ошибку в коде.", true),
+                    Triple("программирование", "Готовил суп и ел хлеб.", false),
+                    Triple("дождь", "С неба лило весь вечер, я промок насквозь.", true),
+                    Triple("дождь", "Прошел новый уровень в игре.", false),
+                    Triple("еда", "Вчера была победа в Доте.", false),
+                    Triple("кот", "Некоторые страницы были пустыми.", false),
+                    Triple("cat", "I read an article about education.", false),
+                    Triple("cat", "I booked a catering service for dinner.", false),
+                )
+                for ((query, text, expected) in openCases) {
+                    assertEquals("Open query '$query' / '$text'", expected, relevance.isRelevant(query, text))
+                }
+                println("Open queries: ${openCases.size} actual-model cases passed; game fragments returned both reported entries")
+
                 // Frozen, independently labelled RU/EN corpus. No parameter tuning in this test.
                 val fixture = javaClass.getResourceAsStream("/semantic_relevance_cases.json")
                     ?: error("Missing semantic relevance fixture")

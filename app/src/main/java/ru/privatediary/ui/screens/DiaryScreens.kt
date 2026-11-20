@@ -45,6 +45,7 @@ import ru.privatediary.ui.DiaryActions
 import ru.privatediary.ui.DiaryUiState
 import ru.privatediary.ui.SearchMode
 import ru.privatediary.ui.theme.DiaryStyle
+import ru.privatediary.util.WordSearch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -427,9 +428,8 @@ private fun highlightFragment(fragment: String, query: String, semantic: Boolean
     if (semantic) {
         if (fragment.isNotEmpty()) addStyle(SpanStyle(background = color), 0, fragment.length)
     } else {
-        val words = Regex("[\\p{L}\\p{N}]+").findAll(query).map { it.value }.toSet()
-        for (word in words) Regex(Regex.escape(word), RegexOption.IGNORE_CASE).findAll(fragment).forEach { match ->
-            addStyle(SpanStyle(background = color, fontWeight = FontWeight.Medium), match.range.first, match.range.last + 1)
+        for (match in WordSearch.prepare(query).rangesIn(fragment)) {
+            addStyle(SpanStyle(background = color, fontWeight = FontWeight.Medium), match.start, match.endExclusive)
         }
     }
 }

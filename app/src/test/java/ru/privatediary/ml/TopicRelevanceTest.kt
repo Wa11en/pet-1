@@ -26,26 +26,45 @@ class TopicRelevanceTest {
         assertEquals(EngineAvailability.READY, filter.availability)
     }
 
-    @Test fun tiedOrUncertainQueryRejectsWithoutPretendingTheModelFailed() = runBlocking {
+    @Test fun uncertainQueryCanMatchItsOwnContextWithoutACatalogLabel() = runBlocking {
         val model = PrototypeModel()
         model.queryVectors["ambiguous"] = blend(foodEnglish = 0.5f, gamesEnglish = 0.5f)
+        model.passageVectors["corresponding paraphrase"] = blend(foodEnglish = 0.5f, gamesEnglish = 0.5f)
         val filter = TopicRelevanceEngine(model)
+        assertEquals(true, filter.isRelevant("ambiguous", "corresponding paraphrase"))
         assertEquals(false, filter.isRelevant("ambiguous", "pizza"))
         assertEquals(EngineAvailability.READY, filter.availability)
-        // An uncertain query is a valid empty decision and must not trigger raw-result fallback.
+        // A context mismatch is a valid rejection, rather than model unavailability.
         assertEquals(false, filter.isRelevant("ambiguous", "game"))
     }
 
     @Test fun queryAndEntryBoundariesIncludeTheDeclaredWindowWithoutRescaling() = runBlocking {
         val model = PrototypeModel()
-        model.queryVectors["boundary"] = blend(foodEnglish = 0.5f, gamesEnglish = 0.485f)
-        model.queryVectors["below"] = blend(foodEnglish = 0.5f, gamesEnglish = 0.486f)
-        model.passageVectors["entry boundary"] = blend(foodEnglish = 0.49f, gamesEnglish = 0.5f)
-        model.passageVectors["entry outside"] = blend(foodEnglish = 0.488f, gamesEnglish = 0.5f)
+        model.queryVectors["clear intent"] = blend(foodEnglish = 0.5f, gamesEnglish = 0.485f)
+        model.queryVectors["less certain"] = blend(foodEnglish = 0.5f, gamesEnglish = 0.486f)
+        model.passageVectors["border fragment"] = blend(foodEnglish = 0.49f, gamesEnglish = 0.5f)
+        model.passageVectors["outside fragment"] = blend(foodEnglish = 0.488f, gamesEnglish = 0.5f)
         val filter = TopicRelevanceEngine(model)
-        assertEquals(true, filter.isRelevant("boundary", "entry boundary"))
-        assertEquals(false, filter.isRelevant("below", "entry boundary"))
-        assertEquals(false, filter.isRelevant("boundary", "entry outside"))
+        assertEquals(true, filter.isRelevant("clear intent", "border fragment"))
+        assertEquals(true, filter.isRelevant("less certain", "border fragment"))
+        assertEquals(false, filter.isRelevant("clear intent", "outside fragment"))
+    }
+
+    @Test fun actualWordFormsPassWithoutAForcedDomainWhileAccidentalInfixesDoNot() = runBlocking {
+        val model = PrototypeModel()
+        val filter = TopicRelevanceEngine(model)
+        filter.prepare()
+        val calls = model.embeddings
+        model.failQuery = "игра"
+        assertEquals(true, filter.isRelevant("игра", "поиграл с друзьями"))
+        assertEquals(true, filter.isRelevant("игра", "выиграл в доту"))
+        assertEquals(calls, model.embeddings)
+        model.failQuery = null
+        assertEquals(false, filter.isRelevant("еда", "победа в доте", basis(GAMES_RU)))
+        model.queryVectors["кот"] = basis(FOOD_RU)
+        assertEquals(false, filter.isRelevant("кот", "некоторые страницы", basis(GAMES_RU)))
+        model.queryVectors["cat"] = basis(FOOD_EN)
+        assertEquals(false, filter.isRelevant("cat", "education and catering", basis(GAMES_EN)))
     }
 
     @Test fun storedCandidateVectorIsReusedAndNotModifiedWhileOnlyOneQueryIsMemoized() = runBlocking {
