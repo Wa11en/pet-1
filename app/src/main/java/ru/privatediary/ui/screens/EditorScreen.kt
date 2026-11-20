@@ -8,6 +8,8 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +26,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -55,12 +60,26 @@ internal fun EditorScreen(
     onDelete: () -> Unit,
     onDraftChanged: (EditorDraft) -> Unit,
     onDiscardDraft: () -> Unit,
+    focusSearchMatch: Boolean = false,
 ) {
     var textValue by remember(draft.entryId) {
         mutableStateOf(TextFieldValue(draft.text, TextRange(
             draft.selectionStart.coerceIn(0, draft.text.length),
             draft.selectionEnd.coerceIn(0, draft.text.length),
         )))
+    }
+    val focusRequester = remember { FocusRequester() }
+    val bringIntoView = remember { BringIntoViewRequester() }
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var matchRevealed by remember(draft.entryId) { mutableStateOf(false) }
+    LaunchedEffect(focusSearchMatch, textLayout) {
+        val layout = textLayout
+        if (focusSearchMatch && !matchRevealed && layout != null) {
+            focusRequester.requestFocus()
+            withFrameNanos { }
+            bringIntoView.bringIntoView(layout.getCursorRect(draft.selectionStart.coerceIn(0, draft.text.length)))
+            matchRevealed = true
+        }
     }
     val latestDraft by rememberUpdatedState(draft)
     val latestOnDraftChanged by rememberUpdatedState(onDraftChanged)
@@ -179,7 +198,9 @@ internal fun EditorScreen(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 21.sp, lineHeight = 33.sp, color = palette.ink),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp)
+                    .focusRequester(focusRequester).bringIntoViewRequester(bringIntoView),
+                onTextLayout = { textLayout = it },
                 decorationBox = { input ->
                     Box {
                         if (textValue.text.isEmpty()) Text(

@@ -16,6 +16,7 @@ import ru.privatediary.util.WordSearch
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
+import java.time.ZoneId
 
 object TextHash {
     fun of(text: String): String = MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
@@ -88,7 +89,7 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         this.entries.deleteAll()
         entries.forEach { this.entries.upsert(it.toEntity()) }
     }
-    override suspend fun searchWords(query: String): List<SearchResult> {
+    override suspend fun searchWords(query: String, filters: SearchFilters): List<SearchResult> {
         val fragments = WordSearch.prepare(query)
         if (fragments.isEmpty) return emptyList()
         val expression = FtsQuery.fromUserInput(query)
@@ -98,9 +99,13 @@ class RoomEntryRepository(val database: DiaryDatabase) : EntryRepository, Embedd
         val indexed = if (expression.isBlank()) emptyMap() else entries.search(expression).associateBy { it.entry.id }
         currentCoroutineContext().ensureActive()
         val results = ArrayList<SearchResult>()
+        val zone = ZoneId.systemDefault()
         for (row in entries.all()) {
             currentCoroutineContext().ensureActive()
             val entry = row.toDomain()
+            // Apply metadata filters before the result cap, including rows beyond FTS's
+            // snippet-only cap. A newer excluded entry must not hide an older match.
+            if (!filters.matches(entry, zone)) continue
             if (!fragments.matches(entry.text, entry.tags)) continue
             val indexedFragment = indexed[entry.id]?.fragment
             val fragment = indexedFragment?.takeIf { fragments.rangesIn(it).isNotEmpty() }

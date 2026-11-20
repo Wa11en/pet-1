@@ -8,6 +8,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,6 +83,9 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 @Composable
 private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
+    val journalListState = rememberLazyListState()
+    val searchListState = rememberLazyListState()
+    LaunchedEffect(state.query, state.searchFilters) { searchListState.scrollToItem(0) }
     var showTrash by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val movedMessage = stringResource(R.string.trash_moved)
@@ -101,7 +106,8 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
     if (editing != null && draft != null) {
         EditorScreen(entry = editing, draft = draft, draftSaving = state.draftSaving, busy = state.busy,
             onClose = actions.onCloseEditor, onSave = actions.onSaveEntry, onDelete = { deleteEntry = editing },
-            onDraftChanged = actions.onDraftChanged, onDiscardDraft = actions.onDiscardDraft)
+            onDraftChanged = actions.onDraftChanged, onDiscardDraft = actions.onDiscardDraft,
+            focusSearchMatch = state.editorFocusMatch)
     } else if (showTrash) {
         TrashScreen(state.trash, state.busy, onBack = { showTrash = false },
             onRestore = actions.onRestoreEntry, onDeleteForever = actions.onDeleteForever)
@@ -122,11 +128,11 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 when (page) {
-                    Page.JOURNAL -> JournalScreen(state.entries, open, create, state.drafts) { savedDraft ->
+                    Page.JOURNAL -> JournalScreen(state.entries, open, create, state.drafts, journalListState) { savedDraft ->
                         open(state.entries.firstOrNull { it.id == savedDraft.entryId }
                             ?: Entry(timestamp = savedDraft.timestamp, text = ""))
                     }
-                    Page.SEARCH -> SearchScreen(state, actions, open)
+                    Page.SEARCH -> SearchScreen(state, actions, searchListState)
                     Page.SETTINGS -> SettingsScreen(state, actions, onOpenTrash = { showTrash = true })
                 }
             }
@@ -191,12 +197,12 @@ private fun DiaryNavigation(page: Page, onPage: (Page) -> Unit) {
 
 @Composable
 private fun JournalScreen(entries: List<Entry>, onOpen: (Entry) -> Unit, onCreate: () -> Unit,
-    drafts: List<ru.privatediary.domain.models.EditorDraft>, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
+    drafts: List<ru.privatediary.domain.models.EditorDraft>, listState: LazyListState, onResumeDraft: (ru.privatediary.domain.models.EditorDraft) -> Unit) {
     val today = LocalDate.now()
     val onThisDay = remember(entries, today) { entries.filter { val date = localDate(it.timestamp)
         date.year < today.year && date.month == today.month && date.dayOfMonth == today.dayOfMonth } }
     val groups = remember(entries) { entries.sortedByDescending { it.timestamp }.groupBy { localDate(it.timestamp) } }
-    LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 100.dp),
+    LazyColumn(state = listState, contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item(key = "invitation") { WritingInvitation(entries.isEmpty(), onCreate) }
         items(drafts.filter { draft ->
@@ -351,10 +357,10 @@ private fun TagRow(tags: List<String>) {
 }
 
 @Composable
-private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (Entry) -> Unit) {
+private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, listState: LazyListState) {
     val palette = MaterialTheme.colorScheme
     val highlight = palette.primaryContainer
-    LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 24.dp),
+    LazyColumn(state = listState, contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize()) {
         item {
             OutlinedTextField(state.query, actions.onQueryChanged,
@@ -375,6 +381,10 @@ private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (En
                     shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.by_meaning)) }
             }
         }
+        item {
+            SearchFiltersPanel(state.searchFilters, state.entries.flatMap { it.tags }.distinct().sorted(),
+                enabled = !state.busy, onChange = actions.onSearchFiltersChanged)
+        }
         if (state.searchMode == SearchMode.MEANING) item {
             Surface(shape = RoundedCornerShape(18.dp), color = palette.surfaceContainerHigh) {
                 Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -394,7 +404,7 @@ private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (En
                 }
             }
         }
-        if (state.query.isBlank()) item { SearchSuggestion() }
+        if (state.query.isBlank() && state.searchFilters.isEmpty) item { SearchSuggestion() }
         else if (state.searching) item {
             Row(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -414,7 +424,7 @@ private fun SearchScreen(state: DiaryUiState, actions: DiaryActions, onOpen: (En
         }
         if (state.results.isNotEmpty()) item { SectionCaption(stringResource(R.string.design_results),
             pluralStringResource(R.plurals.design_entry_count, state.results.size, state.results.size)) }
-        items(state.results, key = { it.entry.id }) { result -> SearchResultCard(result, state.query, highlight, onOpen) }
+        items(state.results, key = { it.entry.id }) { result -> SearchResultCard(result, state.query, highlight, actions.onOpenSearchResult) }
     }
 }
 
@@ -433,8 +443,8 @@ private fun SearchSuggestion() {
 }
 
 @Composable
-private fun SearchResultCard(result: SearchResult, query: String, highlight: Color, onOpen: (Entry) -> Unit) {
-    Card(onClick = { onOpen(result.entry) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+private fun SearchResultCard(result: SearchResult, query: String, highlight: Color, onOpen: (SearchResult) -> Unit) {
+    Card(onClick = { onOpen(result) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

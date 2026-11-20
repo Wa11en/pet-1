@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
                     onCreatePin = vm::createPin, onUnlock = vm::unlock, onBiometric = ::authenticate,
                     onSaveEntry = vm::save, onDeleteEntry = vm::delete,
                     onQueryChanged = vm::queryChanged, onSearchModeChanged = vm::modeChanged,
+                    onSearchFiltersChanged = vm::searchFiltersChanged, onOpenSearchResult = vm::openSearchResult,
                     onTimeoutChanged = vm::timeoutChanged, onBiometricsChanged = vm::biometricsChanged,
                     onLanguageChanged = { tag ->
                         vm.updateLanguage(tag)

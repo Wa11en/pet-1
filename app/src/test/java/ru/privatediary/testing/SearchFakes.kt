@@ -7,6 +7,7 @@ import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.models.EmbeddingChunk
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.domain.models.SearchResult
+import ru.privatediary.domain.models.SearchFilters
 import ru.privatediary.ml.embedder.EmbeddingEngine
 import ru.privatediary.ml.embedder.EngineAvailability
 import ru.privatediary.ml.tokenizer.TextChunk
@@ -14,13 +15,15 @@ import ru.privatediary.ml.search.RelevanceEngine
 
 class SearchFakeRepository(var rows: List<Entry> = emptyList()) : EntryRepository {
     var wordQueries = mutableListOf<String>()
+    var wordFilters = mutableListOf<SearchFilters>()
     var wordResults = emptyList<SearchResult>()
     var allEntriesCalls = 0
     override fun observeEntries(): Flow<List<Entry>> = flowOf(rows)
     override suspend fun get(id: Long): Entry? = rows.find { it.id == id }
-    override suspend fun searchWords(query: String): List<SearchResult> {
+    override suspend fun searchWords(query: String, filters: SearchFilters): List<SearchResult> {
         wordQueries += query
-        return wordResults
+        wordFilters += filters
+        return wordResults.filter { filters.matches(it.entry) }
     }
     override suspend fun allEntries(): List<Entry> { allEntriesCalls++; return rows }
     override suspend fun upsert(entry: Entry): Long = error("Unexpected write")

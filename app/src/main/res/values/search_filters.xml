@@ -1,0 +1,26 @@
+<resources>
+    <string name="search_filter_title">Filters</string>
+    <string name="search_filter_title_count">Filters · %1$d</string>
+    <string name="search_filter_hint">Date, mood and tags</string>
+    <string name="search_filter_clear_all">Reset filters</string>
+    <string name="search_filter_expanded">Expanded</string>
+    <string name="search_filter_collapsed">Collapsed</string>
+    <string name="search_filter_from">From</string>
+    <string name="search_filter_to">Through</string>
+    <string name="search_filter_any_date">Any date</string>
+    <string name="search_filter_clear_from">Remove the start date</string>
+    <string name="search_filter_clear_to">Remove the end date</string>
+    <string name="search_filter_mood">Mood</string>
+    <string name="search_filter_mood_choice">Mood: %1$d out of 5</string>
+    <string name="search_filter_tag">Tag</string>
+    <string name="search_filter_all_tags">All tags</string>
+    <string name="search_filter_choose_tag">Choose a tag</string>
+    <string name="search_filter_clear_tag">Remove the tag filter</string>
+    <string name="search_filter_no_tags">Your entries do not have any tags yet.</string>
+    <string name="search_filter_tag_search">Find a tag</string>
+    <string name="search_filter_no_matching_tags">No matching tags.</string>
+    <string name="search_filter_close">Done</string>
+    <string name="search_filter_summary_from">from %1$s</string>
+    <string name="search_filter_summary_to">through %1$s</string>
+    <string name="search_filter_summary_mood">mood %1$d/5</string>
+</resources>

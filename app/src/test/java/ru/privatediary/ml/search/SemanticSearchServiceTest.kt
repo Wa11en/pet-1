@@ -14,6 +14,7 @@ import ru.privatediary.testing.SearchFakeVectors
 import ru.privatediary.testing.SearchFakeRelevance
 import ru.privatediary.domain.models.EmbeddingChunk
 import ru.privatediary.domain.models.SearchResult
+import ru.privatediary.domain.models.SearchFilters
 import ru.privatediary.domain.usecases.SearchEntries
 import java.security.MessageDigest
 import kotlinx.coroutines.currentCoroutineContext
@@ -292,6 +293,33 @@ class SemanticSearchServiceTest {
         assertEquals(result.map { it.entry.id }.distinct(), result.map { it.entry.id })
         assertTrue(result.size <= 30)
         assertTrue(result.isEmpty())
+    }
+
+    @Test fun metadataFiltersApplyBeforeTheSixtyPairMobileBudget() = runBlocking {
+        val excluded = (1L..70L).map { Entry(it, 0, "excluded $it", mood = 1, tags = listOf("работа")) }
+        val eligible = Entry(71, 0, "eligible quiet evening", mood = 4, tags = listOf("Дом"))
+        val repository = SearchFakeRepository(excluded + eligible)
+        val vectors = SearchFakeVectors().apply {
+            stored = excluded.map { embedding(it) } + embedding(eligible, vector = floatArrayOf(4f, 3f))
+        }
+        val gate = SearchFakeRelevance()
+        val service = SemanticSearchService(SearchFakeEngine(), repository, vectors, gate)
+        val result = service.search("спокойствие", SearchFilters(mood = 4, tag = "дом"))!!
+        assertEquals(listOf(eligible), result.map { it.entry })
+        assertEquals(listOf("спокойствие" to eligible.text), gate.pairs)
+        assertEquals(0.8f, result.single().score!!, 0.00001f)
+    }
+
+    @Test fun metadataChangedDuringInferenceCannotPublishAResultOutsideTheFilter() = runBlocking {
+        val original = entry.copy(mood = 4, tags = listOf("Дом"))
+        for (changed in listOf(original.copy(mood = 1), original.copy(tags = listOf("Работа")))) {
+            val repository = SearchFakeRepository(listOf(original))
+            val vectors = SearchFakeVectors().apply { stored = listOf(embedding(original)) }
+            val gate = SearchFakeRelevance().apply { result = { _, _ -> repository.rows = listOf(changed); true } }
+            val service = SemanticSearchService(SearchFakeEngine(), repository, vectors, gate)
+            assertTrue(service.search("спокойствие", SearchFilters(mood = 4, tag = "Дом"))!!.isEmpty())
+            assertTrue(service.available.value)
+        }
     }
 
     private fun embedding(

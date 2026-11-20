@@ -16,6 +16,9 @@ import ru.privatediary.DiarySession
 import ru.privatediary.R
 import ru.privatediary.domain.models.Entry
 import ru.privatediary.domain.models.EditorDraft
+import ru.privatediary.domain.models.SearchFilters
+import ru.privatediary.domain.models.SearchResult
+import ru.privatediary.util.SearchFocus
 import ru.privatediary.security.lock.PinLock
 import ru.privatediary.util.BackupCodec
 import ru.privatediary.util.MarkdownExporter
@@ -50,7 +53,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(unlocked = false, loading = false, entries = emptyList(),
                         results = emptyList(), searching = false, query = "", errorMessage = null,
                         drafts = emptyList(), editorEntry = null, editorDraft = null, draftSaving = false,
-                        trash = emptyList(), undoEntryId = null) }
+                        trash = emptyList(), undoEntryId = null, searchFilters = SearchFilters(), editorFocusMatch = false) }
                 }
             }
         }
@@ -109,15 +112,24 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun biometricSuccess() { if (graph.settings.biometricsEnabled) graph.lock.unlockWithBiometrics() }
-    fun openEntry(entry: Entry) {
+    fun openEntry(entry: Entry) { openEditor(entry) }
+    fun openSearchResult(result: SearchResult) {
+        openEditor(result.entry, result.fragment.takeIf { _state.value.query.isNotBlank() }, _state.value.query, result.score != null)
+    }
+    private fun openEditor(entry: Entry, fragment: String? = null, query: String = "", semantic: Boolean = false) {
         if (!_state.value.unlocked || _state.value.busy) return
         val active = session ?: return
         operation {
-            val draft = draftMutex.withLock {
-                active.repository.observeDrafts().first().firstOrNull { it.entryId == entry.id }
-            } ?: EditorDraft.from(entry)
+            val current = if (entry.id == 0L) entry else active.repository.get(entry.id)
+                ?: return@operation
+            val recovered = draftMutex.withLock {
+                active.repository.observeDrafts().first().firstOrNull { it.entryId == current.id }
+            } ?: EditorDraft.from(current)
+            val selection = fragment?.let { SearchFocus.selection(recovered.text, it, query, semantic) }
+            val draft = if (selection == null) recovered else recovered.copy(
+                selectionStart = selection.start, selectionEnd = selection.endExclusive)
             if (graph.lock.unlocked.value) _state.update {
-                it.copy(editorEntry = entry, editorDraft = draft, draftSaving = false)
+                it.copy(editorEntry = current, editorDraft = draft, draftSaving = false, editorFocusMatch = selection != null)
             }
         }
     }
@@ -203,6 +215,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     fun dismissUndo() { _state.update { it.copy(undoEntryId = null) } }
     fun queryChanged(query: String) { _state.update { it.copy(query = query.take(4096)) }; refreshSearch() }
     fun modeChanged(mode: SearchMode) { _state.update { it.copy(searchMode = mode) }; refreshSearch() }
+    fun searchFiltersChanged(filters: SearchFilters) { _state.update { it.copy(searchFilters = filters) }; refreshSearch() }
     fun timeoutChanged(seconds: Int) { graph.settings.timeoutSeconds = seconds; _state.update { it.copy(timeoutSeconds = seconds) } }
     fun biometricsChanged(enabled: Boolean) {
         graph.settings.biometricsEnabled = enabled && _state.value.biometricAvailable
@@ -216,7 +229,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         val revision = ++searchRevision
         searchJob?.cancel()
         val snapshot = _state.value
-        if (!snapshot.unlocked || snapshot.query.isBlank()) {
+        if (!snapshot.unlocked || (snapshot.query.isBlank() && snapshot.searchFilters.isEmpty)) {
             _state.update { it.copy(results = emptyList(), searching = false) }; return
         }
         val active = session ?: run { _state.update { it.copy(results = emptyList(), searching = false) }; return }
@@ -224,7 +237,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         searchJob = viewModelScope.launch {
             try {
                 delay(250)
-                val hits = withContext(Dispatchers.Default) { active.search(snapshot.query, snapshot.searchMode == SearchMode.MEANING) }
+                val hits = withContext(Dispatchers.Default) { active.search(snapshot.query, snapshot.searchMode == SearchMode.MEANING, snapshot.searchFilters) }
                 if (revision == searchRevision && graph.lock.unlocked.value) _state.update { it.copy(results = hits) }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {

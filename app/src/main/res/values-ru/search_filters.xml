@@ -1,0 +1,26 @@
+<resources>
+    <string name="search_filter_title">Фильтры</string>
+    <string name="search_filter_title_count">Фильтры · %1$d</string>
+    <string name="search_filter_hint">Дата, настроение и теги</string>
+    <string name="search_filter_clear_all">Сбросить фильтры</string>
+    <string name="search_filter_expanded">Развёрнуто</string>
+    <string name="search_filter_collapsed">Свёрнуто</string>
+    <string name="search_filter_from">С даты</string>
+    <string name="search_filter_to">По дату</string>
+    <string name="search_filter_any_date">Любая дата</string>
+    <string name="search_filter_clear_from">Убрать начальную дату</string>
+    <string name="search_filter_clear_to">Убрать конечную дату</string>
+    <string name="search_filter_mood">Настроение</string>
+    <string name="search_filter_mood_choice">Настроение: %1$d из 5</string>
+    <string name="search_filter_tag">Тег</string>
+    <string name="search_filter_all_tags">Все теги</string>
+    <string name="search_filter_choose_tag">Выбрать тег</string>
+    <string name="search_filter_clear_tag">Убрать фильтр по тегу</string>
+    <string name="search_filter_no_tags">В записях пока нет тегов.</string>
+    <string name="search_filter_tag_search">Найти тег</string>
+    <string name="search_filter_no_matching_tags">Такого тега нет.</string>
+    <string name="search_filter_close">Готово</string>
+    <string name="search_filter_summary_from">с %1$s</string>
+    <string name="search_filter_summary_to">по %1$s</string>
+    <string name="search_filter_summary_mood">настроение %1$d/5</string>
+</resources>

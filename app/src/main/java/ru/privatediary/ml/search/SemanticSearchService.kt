@@ -13,9 +13,11 @@ import ru.privatediary.domain.EmbeddingStore
 import ru.privatediary.domain.EntryRepository
 import ru.privatediary.domain.models.EmbeddingChunk
 import ru.privatediary.domain.models.SearchResult
+import ru.privatediary.domain.models.SearchFilters
 import ru.privatediary.ml.embedder.EmbeddingEngine
 import ru.privatediary.ml.embedder.EngineAvailability
 import java.security.MessageDigest
+import java.time.ZoneId
 
 /** Serial CPU work; cancellation is checked between chunks, writes use a text-hash guard. */
 class SemanticSearchService(
@@ -73,7 +75,7 @@ class SemanticSearchService(
         }
     }
 
-    suspend fun search(query: String): List<SearchResult>? = withContext(Dispatchers.Default) {
+    suspend fun search(query: String, filters: SearchFilters = SearchFilters()): List<SearchResult>? = withContext(Dispatchers.Default) {
         try {
             currentCoroutineContext().ensureActive()
             if (engine.prepare() != EngineAvailability.READY || relevance.prepare() != EngineAvailability.READY) {
@@ -85,7 +87,10 @@ class SemanticSearchService(
                 return@withContext null
             }
             require(queryVector.isNotEmpty() && queryVector.all(Float::isFinite))
-            val currentHashes = entries.allEntries().associate { it.id to textHash(it.text) }
+            val zone = ZoneId.systemDefault()
+            // Filter before the mobile pair budget so unrelated dates/tags cannot consume it.
+            val currentHashes = entries.allEntries().filter { filters.matches(it, zone) }
+                .associate { it.id to textHash(it.text) }
             val order = compareByDescending<CheckedCandidate> { it.similarity }
                 .thenBy { it.chunk.entryId }.thenBy { it.chunk.ordinal }
             val candidates = vectors.allEmbeddings().asSequence()
@@ -117,7 +122,8 @@ class SemanticSearchService(
 
             // A diary edit/delete can happen during native inference. Re-read content before
             // publishing so an old accepted fragment cannot survive a concurrent mutation.
-            val freshEntries = entries.allEntries().associateBy { it.id }
+            // Metadata can change while the text hash stays the same.
+            val freshEntries = entries.allEntries().filter { filters.matches(it, zone) }.associateBy { it.id }
             val freshHashes = freshEntries.mapValues { (_, entry) -> textHash(entry.text) }
             currentCoroutineContext().ensureActive()
             val results = accepted.filter { freshHashes[it.chunk.entryId] == it.chunk.contentHash }
