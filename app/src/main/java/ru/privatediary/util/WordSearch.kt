@@ -7,7 +7,9 @@ import java.util.regex.Pattern
 
 /** Literal, Unicode-aware fragments; user input is never interpreted as SQL or FTS syntax. */
 object WordSearch {
-    private val whitespace = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS)
+    // Android rejects UNICODE_CHARACTER_CLASS. Spell out Unicode whitespace instead
+    // of passing a desktop-only flag during this object's first initialization.
+    private val whitespace = Pattern.compile("[\\p{Z}\\u0009-\\u000D\\u0085]+")
 
     data class Match(val start: Int, val endExclusive: Int)
 

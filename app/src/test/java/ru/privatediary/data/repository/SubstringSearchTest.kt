@@ -5,6 +5,25 @@ import org.junit.Test
 import ru.privatediary.util.WordSearch
 
 class SubstringSearchTest {
+    @Test fun incrementalTypingAndUnicodeSeparatorsKeepTheSameQuerySemantics() {
+        for (input in listOf("и", "иг", "игр", "игра")) {
+            val query = WordSearch.prepare(input)
+            assertTrue("Short input: $input", query.matches("выиграл в доту"))
+            assertTrue(query.matches("поиграл в контру"))
+            for (range in query.rangesIn("😀 выиграл в доту")) {
+                assertTrue(range.start >= 0 && range.start < range.endExclusive)
+                assertTrue(range.endExclusive <= "😀 выиграл в доту".length)
+            }
+        }
+        for (separator in listOf(" ", "\t", "\n", "\u00a0", "\u0085", "\u202f", "\u2003", "\u2028")) {
+            val query = WordSearch.prepare("${separator}ИГРА${separator}ДО${separator}")
+            assertEquals(listOf("игра", "до"), query.terms)
+            assertTrue(query.matches("выиграл в доту"))
+            assertFalse(query.matches("поиграл в контру"))
+            assertTrue(WordSearch.prepare(separator).isEmpty)
+        }
+    }
+
     @Test fun russianAndEnglishMiddleFragmentsAreCaseInsensitive() {
         val game = WordSearch.prepare("ИГРА")
         assertTrue(game.matches("выиграл в доту"))
