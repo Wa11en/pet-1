@@ -113,7 +113,8 @@ class DiaryUpgradeTest {
             assertArrayEquals(vector, chunks.single().vector, 0f)
             assertTrue(repository.observeDrafts().first().isEmpty())
 
-            val draft = EditorDraft.from(original).copy(text = "Черновик после обновления", updatedAt = 123L)
+            val draft = EditorDraft.from(original).copy(text = "Черновик после обновления",
+                selectionStart = 7, selectionEnd = 12, updatedAt = 123L)
             repository.saveDraft(draft)
             database.close()
             database = null

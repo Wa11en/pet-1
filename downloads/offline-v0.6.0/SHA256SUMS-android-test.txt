@@ -1,1 +1,1 @@
-f2d95368b2ef89533aedf3c46ec4dc8e2ef59a3d5aa2ba89d512501ff2978b42  android-test/search-input-tests.apk
+c951216b9f24ea670030fcaa6b276c47705bb4569097582a63cacb3db54a4469  android-test/search-input-tests.apk
