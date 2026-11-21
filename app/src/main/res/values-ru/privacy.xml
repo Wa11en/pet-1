@@ -1,0 +1,7 @@
+<resources>
+    <string name="privacy_policy_title">Политика конфиденциальности</string>
+    <string name="privacy_policy_description">Локальное хранение, копии и ваш выбор</string>
+    <string name="privacy_policy_updated">Обновлено: %1$s · Версия %2$s</string>
+    <string name="privacy_policy_unavailable">Не удалось открыть политику конфиденциальности. Повторите попытку.</string>
+    <string name="privacy_policy_contact">Связь по вопросам конфиденциальности</string>
+</resources>

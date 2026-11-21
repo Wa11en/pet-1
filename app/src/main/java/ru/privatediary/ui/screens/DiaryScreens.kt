@@ -59,6 +59,7 @@ private enum class Page { JOURNAL, SEARCH, SETTINGS }
 
 @Composable
 fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
+    var showPrivacy by remember { mutableStateOf(false) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when {
             state.loading -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center,
@@ -69,11 +70,13 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
                 Spacer(Modifier.height(20.dp))
                 CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
             }
-            !state.onboarded -> SetupScreen(state, actions)
-            !state.unlocked -> LockScreen(state, actions)
-            else -> UnlockedScreens(state, actions)
+            !state.onboarded -> SetupScreen(state, actions, onPrivacy = { showPrivacy = true })
+            !state.unlocked -> LockScreen(state, actions, onPrivacy = { showPrivacy = true })
+            else -> UnlockedScreens(state, actions, onPrivacy = { showPrivacy = true })
         }
-        state.errorMessage?.let { message ->
+        if (showPrivacy) PrivacyPolicyScreen(ru.privatediary.BuildConfig.PUBLISHER_DISPLAY_NAME,
+            ru.privatediary.BuildConfig.SUPPORT_EMAIL, onBack = { showPrivacy = false })
+        state.errorMessage?.takeUnless { showPrivacy }?.let { message ->
             AlertDialog(onDismissRequest = actions.onDismissError,
                 icon = { Icon(Icons.Outlined.Info, null) },
                 title = { Text(stringResource(R.string.notice)) }, text = { Text(message) },
@@ -83,7 +86,7 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
 }
 
 @Composable
-private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
+private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions, onPrivacy: () -> Unit) {
     var page by remember { mutableStateOf(Page.JOURNAL) }
     var creationDraftPrompt by remember { mutableStateOf<ru.privatediary.domain.models.EditorDraft?>(null) }
     var favoritesOnly by remember { mutableStateOf(false) }
@@ -148,7 +151,7 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions) {
                             ?: Entry(timestamp = savedDraft.timestamp, text = ""))
                     }
                     Page.SEARCH -> SearchScreen(state, actions, searchListState)
-                    Page.SETTINGS -> SettingsScreen(state, actions, onOpenTrash = { showTrash = true })
+                    Page.SETTINGS -> SettingsScreen(state, actions, onOpenTrash = { showTrash = true }, onPrivacy = onPrivacy)
                 }
             }
         }

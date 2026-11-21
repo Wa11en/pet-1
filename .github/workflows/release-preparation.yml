@@ -1,0 +1,119 @@
+name: Prepare unsigned offline release candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-preparation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Discard historical APK archives from the disposable build checkout
+        run: rm -rf -- downloads
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install compile SDK and build tools
+        run: >-
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          "platforms;android-37.0" "build-tools;35.0.0"
+      - name: Fetch the pinned offline model on the build computer
+        run: bash scripts/fetch_model.sh
+      - name: Build source and run unit, native-model, lint and manifest checks
+        run: |
+          unset DIARY_RELEASE_STORE_FILE DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_ALIAS DIARY_RELEASE_KEY_PASSWORD
+          ./gradlew assembleDebug assembleDebugAndroidTest assembleRelease bundleRelease testDebugUnitTest lintDebug checkDebugNoInternet checkReleaseNoInternet \
+            -PunsignedReleaseCandidate=true -PrequireModel=true -PverifyOfflineModel=true --max-workers=2 --console=plain
+      - name: Check privacy documents and release-verifier regressions
+        run: |
+          python3 scripts/test_render_privacy.py
+          python3 scripts/render_privacy.py --check
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Verify exact unsigned APK and AAB
+        run: |
+          python3 scripts/verify_release.py app/build/outputs/apk/release/app-release-unsigned.apk \
+            --allow-unsigned-candidate --report app/build/outputs/apk/release/verification-candidate.json
+          python3 scripts/verify_release.py app/build/outputs/bundle/release/app-release.aab \
+            --allow-unsigned-candidate --report app/build/outputs/bundle/release/verification-candidate.json
+      - name: Enable emulator hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test the release runtime copy and capture real synthetic UI screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -memory 2048
+          script: |
+            bash scripts/check_release_android.sh app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk release/artifacts/android-runtime "$HOME/.android/debug.keystore"
+            bash scripts/check_store_screenshots.sh app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk release/store/screenshots
+      - name: Report remaining release and seller requirements
+        run: >-
+          python3 scripts/check_release_readiness.py --report-only
+          --report release/artifacts/readiness.json
+          --apk-report app/build/outputs/apk/release/verification-candidate.json
+          --aab-report app/build/outputs/bundle/release/verification-candidate.json
+      - name: Save public verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-diary-verification-${{ github.run_number }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            app/build/outputs/apk/release/verification-candidate.json
+            app/build/outputs/bundle/release/verification-candidate.json
+            app/build/reports/lint-results-debug.html
+            app/build/test-results/testDebugUnitTest/*.xml
+            release/artifacts/readiness.json
+            release/artifacts/android-runtime/core-tests.txt
+            release/artifacts/android-runtime/release-not-debuggable.txt
+            release/artifacts/android-runtime/runtime-summary.json
+      - name: Save synthetic screenshot diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-diary-synthetic-screens-${{ github.run_number }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            release/store/screenshots/*.png
+            ${{ runner.temp }}/private-diary-store-capture/instrumentation.txt
+      - name: Save unsigned review artifacts and public store materials
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-diary-unsigned-review-${{ github.run_number }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/bundle/release/app-release.aab
+            release/store/screenshots/*.png
+            release/store/metadata-ru.json
+            release/store/metadata-en.json
+            release/store/assets/*.png
+            release/store/assets/*.svg
+            release/store/assets/SHA256SUMS-artwork.txt
+            release/store/assets/README.md
+            app/src/main/assets/privacy/policy.json
+            docs/privacy/index.html
+            docs/privacy/en.html
+            release/REVIEWER.md
+            release/RUSTORE.md
+            release/SIGNING.md

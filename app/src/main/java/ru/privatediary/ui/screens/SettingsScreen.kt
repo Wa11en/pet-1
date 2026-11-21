@@ -42,7 +42,7 @@ import ru.privatediary.ui.DiaryActions
 import ru.privatediary.ui.DiaryUiState
 
 @Composable
-internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTrash: () -> Unit) {
+internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTrash: () -> Unit, onPrivacy: () -> Unit) {
     var passwordAction by remember { mutableStateOf<String?>(null) }
     var exportWarning by remember { mutableStateOf(false) }
     val enabled = !state.busy
@@ -52,6 +52,11 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTr
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         PrivacyCard()
+        OutlinedButton(onClick = onPrivacy, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Outlined.Shield, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.privacy_policy_title))
+        }
 
         SettingsGroup(R.string.settings_security_section) {
             SettingsHeading(Icons.Outlined.Lock, R.string.lock_timeout, R.string.settings_lock_hint)

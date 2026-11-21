@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img">
+<title>Private Diary</title>
+<desc>The app&#x27;s paper diary, bookmark, and warm gold sun on a forest-green background.</desc>
+<rect width="512" height="512" fill="#234C3F"/>
+<g transform="scale(8)"><path d="M16,0H48C56.84,0 64,7.16 64,16V48C64,56.84 56.84,64 48,64H16C7.16,64 0,56.84 0,48V16C0,7.16 7.16,0 16,0Z" fill="#234C3F"/>
+<path d="M64,0V36C59.8,39.8 54.4,42 48.5,42C35.5,42 25,31.5 25,18.5C25,10.9 28.6,4.2 34.1,0Z" fill="#2D594A"/>
+<path d="M51,13A5,5 0,1 1,41 13A5,5 0,1 1,51 13Z" fill="#DFC18A"/>
+<path d="M23,18H44C46.21,18 48,19.79 48,22V51H24C20.69,51 18,53.69 18,57V23C18,20.24 20.24,18 23,18Z" fill="#183B30"/>
+<path d="M21,15H41C43.21,15 45,16.79 45,19V48H22C19.24,48 17,50.24 17,53V20C17,17.24 18.24,15 21,15Z" fill="#F6F0DF"/>
+<path d="M21,15H24V48H22C19.24,48 17,50.24 17,53V20C17,17.24 18.24,15 21,15Z" fill="#D4DDCB"/>
+<path d="M34,15H39V29L36.5,27L34,29Z" fill="#C88768"/>
+<path d="M29,34H38M29,39H35" fill="none" stroke="#55715F" stroke-width="2" stroke-linecap="round"/>
+<path d="M22,48H45V54H22C20.34,54 19,52.66 19,51C19,49.34 20.34,48 22,48Z" fill="#E8E4D5"/>
+<path d="M23,51H42" fill="none" stroke="#A7B29E" stroke-width="1.2" stroke-linecap="round"/></g>
+</svg>

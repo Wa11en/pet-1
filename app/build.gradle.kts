@@ -56,6 +56,13 @@ abstract class VerifyBundledModel : DefaultTask() {
 
 val requireModel = providers.gradleProperty("requireModel").map { it.toBooleanStrict() }.orElse(false)
 val verifyOfflineModel = providers.gradleProperty("verifyOfflineModel").map { it.toBooleanStrict() }.orElse(false)
+val unsignedReleaseCandidate = providers.gradleProperty("unsignedReleaseCandidate").map { it.toBooleanStrict() }.orElse(false)
+val releaseKeyFile = providers.environmentVariable("DIARY_RELEASE_STORE_FILE")
+val releaseStorePassword = providers.environmentVariable("DIARY_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = providers.environmentVariable("DIARY_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = providers.environmentVariable("DIARY_RELEASE_KEY_PASSWORD")
+val releaseCredentialsPresent = listOf(releaseKeyFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { it.orNull?.isNotBlank() == true }
 val verifyBundledModel = tasks.register<VerifyBundledModel>("verifyBundledModel") {
     modelDirectory.set(layout.projectDirectory.dir("src/main/assets/model"))
 }
@@ -68,13 +75,30 @@ android {
         applicationId = "ru.privatediary"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.6.0"
+        versionCode = 9
+        versionName = "1.0.0-rc1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "PUBLISHER_DISPLAY_NAME", "\"Private Diary\"")
+        buildConfigField("String", "SUPPORT_EMAIL", "\"gr1val@yandex.ru\"")
     }
     // Both languages must be available offline, including installs from App Bundles.
     bundle { language { enableSplit = false } }
     buildFeatures { compose = true; buildConfig = true }
+    if (releaseCredentialsPresent && !unsignedReleaseCandidate.get()) {
+        signingConfigs.create("ownerRelease") {
+            storeFile = rootProject.file(releaseKeyFile.get())
+            storePassword = releaseStorePassword.get()
+            keyAlias = releaseKeyAlias.get()
+            keyPassword = releaseKeyPassword.get()
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isDebuggable = false
+            isMinifyEnabled = false
+            if (releaseCredentialsPresent && !unsignedReleaseCandidate.get()) signingConfig = signingConfigs.getByName("ownerRelease")
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     testOptions { unitTests.isIncludeAndroidResources = true }
@@ -87,6 +111,22 @@ androidComponents.onVariants { variant ->
     val suffix = variant.name.replaceFirstChar { it.uppercase() }
     val verify = tasks.register<CheckNoInternet>("check${suffix}NoInternet") {
         manifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+    }
+    if (variant.buildType == "release") {
+        val signingCheck = tasks.register("check${suffix}Signing") {
+            doLast {
+                if (!unsignedReleaseCandidate.get()) {
+                    check(releaseCredentialsPresent) {
+                        "Owner release signing is not configured. Run scripts/create_release_key.sh locally and supply DIARY_RELEASE_* variables, or use -PunsignedReleaseCandidate=true to prepare an explicitly unsigned review artifact."
+                    }
+                    check(rootProject.file(releaseKeyFile.get()).isFile) { "Release keystore does not exist" }
+                }
+            }
+        }
+        tasks.matching { it.name == "package$suffix" || it.name == "package${suffix}Bundle" ||
+            it.name == "sign${suffix}Bundle" || it.name == "assemble$suffix" || it.name == "bundle$suffix" }.configureEach {
+            dependsOn(signingCheck, verifyBundledModel)
+        }
     }
     tasks.matching { it.name == "assemble$suffix" || it.name == "bundle$suffix" || it.name == "test${suffix}UnitTest" || it.name == "check" }.configureEach {
         dependsOn(verify)

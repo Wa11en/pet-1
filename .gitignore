@@ -9,3 +9,13 @@ app/src/main/assets/model/tokenizer.json
 app/src/main/assets/model/sentencepiece.bpe.model
 app/src/main/assets/model/.fetch.*/
 __pycache__/
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties
+signing.properties
+.env
+.env.*
+release/private/
+release/artifacts/

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Screenshot fixture only. This activity is absent from every release artifact. -->
+    <application>
+        <activity android:name=".debug.StorePreviewActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
+</manifest>

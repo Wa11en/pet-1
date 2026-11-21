@@ -1,0 +1,7 @@
+<resources>
+    <string name="privacy_policy_title">Privacy policy</string>
+    <string name="privacy_policy_description">Local storage, backups and your choices</string>
+    <string name="privacy_policy_updated">Updated: %1$s · Version %2$s</string>
+    <string name="privacy_policy_unavailable">The privacy policy could not be opened. Please try again.</string>
+    <string name="privacy_policy_contact">Contact about privacy</string>
+</resources>

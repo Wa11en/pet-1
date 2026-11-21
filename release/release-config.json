@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "applicationId": "ru.privatediary",
+  "versionName": "1.0.0-rc1",
+  "versionCode": 9,
+  "distribution": "paid_download",
+  "store": "RuStore",
+  "submissionReady": false,
+  "publisher": {
+    "displayName": "Private Diary",
+    "supportEmail": "gr1val@yandex.ru",
+    "legalName": null,
+    "merchantEligible": false,
+    "sellerAccountVerified": false
+  },
+  "pricing": {
+    "currency": "RUB",
+    "price": null,
+    "proposedPrice": 199,
+    "confirmed": false
+  },
+  "privacy": {
+    "url": "https://wa11en.github.io/pet-1/privacy/",
+    "publicUrlVerified": false,
+    "policyVersion": "1",
+    "updatedAt": "2026-11-21"
+  },
+  "signing": {
+    "ownerHasKeystoreBackup": false,
+    "certificateSha256": null
+  },
+  "review": {
+    "ageRatingConfirmed": false,
+    "ownerApprovedStoreCopy": false,
+    "storeScreenshotsReviewed": false
+  },
+  "runtime": {
+    "ads": false,
+    "analytics": false,
+    "internetPermission": false,
+    "modelBundled": true
+  },
+  "notes": "Технический кандидат. Перед отправкой в магазин владелец подтверждает продавца, юридическое имя, цену, ключ подписи и материалы. Производственный ключ создаётся и хранится у владельца."
+}

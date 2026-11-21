@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "policy_version": "1",
+  "updated_at": "2026-11-21",
+  "identity": {
+    "app_name": "Личный дневник / Private Diary",
+    "public_name": "Private Diary",
+    "support_email": "gr1val@yandex.ru"
+  },
+  "locales": {
+    "ru": {
+      "title": "Политика конфиденциальности",
+      "summary": "«Личный дневник / Private Diary» хранит и обрабатывает записи на вашем устройстве. Приложение не подключается к интернету, не показывает рекламу и не использует аналитику. Экспорт и обращение в поддержку выполняются только по вашему выбору.",
+      "sections": [
+        {
+          "id": "contact",
+          "title": "Приложение и связь",
+          "paragraphs": [
+            "Эта политика относится к Android-приложению «Личный дневник / Private Diary». Публичное название разработчика: {{DEVELOPER_NAME}}. Связаться по вопросам приложения и конфиденциальности можно по адресу {{SUPPORT_EMAIL}}."
+          ]
+        },
+        {
+          "id": "local-data",
+          "title": "Какие данные обрабатываются",
+          "paragraphs": [
+            "Вы сами решаете, что записывать в дневник. Приложение обрабатывает текст, дату и время записи, выбранное настроение, теги и отметку избранного. Для удобства также сохраняются незавершённые черновики с положением курсора, удалённые записи в корзине и локальный поисковый индекс, включая числовые представления фрагментов для поиска по смыслу.",
+            "Содержимое дневника, поисковые запросы и результаты не отправляются разработчику, рекламным сетям или сервисам обработки текста. Поисковые запросы используются при выполнении поиска и не сохраняются как история запросов. В приложении нет аккаунта на сервере, облачной синхронизации, рекламных модулей, аналитики или отправки отчётов о сбоях."
+          ]
+        },
+        {
+          "id": "storage",
+          "title": "Хранение и защита",
+          "paragraphs": [
+            "Записи, черновики, корзина и поисковые индексы находятся в зашифрованной базе на устройстве. Случайный ключ базы защищён системным хранилищем ключей Android. Во время работы открытого дневника данные расшифровываются в памяти для отображения, редактирования и поиска.",
+            "PIN проверяется на устройстве; открытый PIN не сохраняется. Для проверки используется защищённое проверочное значение. Если вы включите биометрический вход, проверку выполняет Android. Приложение получает результат проверки и не получает биометрические шаблоны. Блокировка после перехода в фон настраивается пользователем.",
+            "Язык, время блокировки, настройки биометрии и уведомлений, счётчики неверного PIN и даты напоминаний или успешной резервной копии хранятся отдельно в приватном хранилище настроек Android. Эти служебные настройки не содержат текстов записей и не отправляются разработчику.",
+            "Приложение запрещает обычные снимки экрана и скрывает содержимое в списке недавних приложений средствами Android. Защита не гарантирует безопасность при изменённой или скомпрометированной ОС, root-доступе, извлечении памяти процесса либо доступе к уже разблокированному дневнику. Приложение не управляет выбранной вами клавиатурой и её настройками обработки вводимого текста."
+          ]
+        },
+        {
+          "id": "search",
+          "title": "Поиск по смыслу",
+          "paragraphs": [
+            "Модель и словарь для поиска входят в установочный пакет. Поиск и подготовка индекса выполняются локально. Тексты записей и запросы не отправляются для обработки или обучения на внешних серверах. Числовые представления записей хранятся в зашифрованной базе.",
+            "Файлы модели и вспомогательный кэш публичных тематических примеров не содержат ваших записей или запросов. Поиск по смыслу приблизительный: он может пропускать подходящие записи или показывать близкие по теме результаты."
+          ]
+        },
+        {
+          "id": "files",
+          "title": "Импорт, экспорт и резервные копии",
+          "paragraphs": [
+            "Доступ к документам предоставляется через системный выбор файлов Android. Приложение читает или записывает выбранные вами документы и не запрашивает доступ ко всем файлам устройства. Импорт переносит текст из выбранных файлов в локальную зашифрованную базу.",
+            "Экспорт в Markdown ZIP создаёт открытый текст без шифрования. Резервная копия .pdiary защищена введённым вами паролем. Защита переносимой копии не зависит от PIN и ключа Android на исходном устройстве. Для восстановления нужен пароль копии; разработчик не может его восстановить.",
+            "Экспорт содержит сохранённые записи и их дату, настроение, теги и избранное. Черновики, корзина, PIN, ключ устройства и настройки приложения не входят в копию. Перед переносом сохраните нужные черновики как записи. Восстановление резервной копии заменяет текущие записи и очищает текущие черновики, корзину и поисковый индекс; индекс затем подготавливается заново. На новом устройстве PIN задаётся отдельно.",
+            "Системный файловый провайдер может быть облачным. Если вы выберете облачную папку или позднее передадите экспортированный файл, данные могут покинуть устройство через выбранный вами сервис. Приложение само не загружает файлы в облако. Для хранения только на устройстве выбирайте локальную папку и самостоятельно контролируйте созданные копии."
+          ]
+        },
+        {
+          "id": "permissions",
+          "title": "Разрешения и напоминания",
+          "paragraphs": [
+            "Биометрия используется только для включённого вами локального входа. Разрешение на уведомления на современных версиях Android запрашивается при включении напоминаний. Напоминания о дневнике и резервной копии изначально выключены и могут быть отключены в настройках.",
+            "Уведомления имеют общий текст без содержимого записей, тегов, настроения и количества записей. На экране блокировки они скрываются средствами Android. Расписание может восстанавливаться после перезагрузки и смены времени или часового пояса без открытия дневника и модели. Android может задерживать доставку напоминаний.",
+            "Приложение не запрашивает интернет-доступ, геолокацию, камеру, микрофон или контакты. Операционная система, магазин установки, файловый провайдер и выбранная клавиатура работают по собственным правилам и настройкам; приложение не управляет их независимой обработкой данных."
+          ]
+        },
+        {
+          "id": "retention",
+          "title": "Срок хранения и удаление",
+          "paragraphs": [
+            "Активные записи хранятся, пока вы используете приложение и не удалите их. Черновик можно сбросить из редактора. При удалении опубликованная запись и её поисковые данные остаются в зашифрованном хранилище корзины до истечения 30 суток; её черновик удаляется. Записи в корзине исключены из обычного списка, обоих видов поиска и экспорта. До окончания срока запись можно восстановить, а окончательно удалить — в любое время из корзины с подтверждением.",
+            "Просроченные записи физически очищаются из базы после разблокировки и затем периодически, пока дневник открыт. Поэтому после 30 суток данные могут оставаться в зашифрованном файле до следующей очистки, но восстановление через приложение уже недоступно. Удаление из базы не гарантирует физическое стирание старых страниц флеш-памяти.",
+            "Очистка данных приложения или его удаление средствами Android удаляет локальную базу и материалы доступа в обычном процессе удаления. Автоматическая системная резервная копия и перенос данных приложения отключены. Ранее созданные вручную экспорты или резервные копии в других папках либо у файлового провайдера необходимо удалить самостоятельно.",
+            "Серверного аккаунта нет, поэтому запрос на удаление серверного аккаунта не требуется. При потере PIN или ключей Android доступ к локальному дневнику может быть утрачен; восстановление возможно из заранее созданной защищённой паролем копии."
+          ]
+        },
+        {
+          "id": "support-updates",
+          "title": "Поддержка и изменения политики",
+          "paragraphs": [
+            "Если вы напишете на {{SUPPORT_EMAIL}}, адрес отправителя и текст письма будут обработаны для ответа на обращение. Почтовые сервисы обрабатывают переписку по своим правилам. Отправляйте только ту информацию, которую готовы передать по электронной почте; для ответа обычно достаточно описания проблемы без текста записей.",
+            "Изменения поведения приложения будут отражены в новой версии политики с обновлённой датой. Актуальная версия доступна в настройках приложения и на публичной странице политики. Вопросы о политике можно направить на {{SUPPORT_EMAIL}}."
+          ]
+        }
+      ]
+    },
+    "en": {
+      "title": "Privacy policy",
+      "summary": "Private Diary stores and processes diary entries on your device. The app does not connect to the internet, display ads or use analytics. Exporting files and contacting support are actions you choose to take.",
+      "sections": [
+        {
+          "id": "contact",
+          "title": "App and contact",
+          "paragraphs": [
+            "This policy applies to the Android app “Личный дневник / Private Diary”. The public developer name is {{DEVELOPER_NAME}}. Questions about the app or privacy can be sent to {{SUPPORT_EMAIL}}."
+          ]
+        },
+        {
+          "id": "local-data",
+          "title": "Data processed by the app",
+          "paragraphs": [
+            "You decide what to write in your diary. The app processes entry text, dates and times, optional moods, tags and favorites. It also retains unfinished drafts with cursor positions, deleted entries in the trash, and local search indexes, including numerical representations of fragments for semantic search.",
+            "Diary content, queries and results are not sent to the developer, advertising networks or text-processing services. Queries are used to run a search and are not saved as a query history. The app has no server account, cloud synchronization, advertising modules, analytics or crash-report uploads."
+          ]
+        },
+        {
+          "id": "storage",
+          "title": "Storage and protection",
+          "paragraphs": [
+            "Entries, drafts, trash and search indexes are stored in an encrypted database on the device. Its random key is protected by Android’s system key storage. While the unlocked diary is running, data is decrypted in memory for display, editing and search.",
+            "The PIN is checked on the device; the clear-text PIN is not saved. A protected verifier is used for the check. If you enable biometric unlock, Android performs the verification. The app receives its outcome, not biometric templates. You can configure the background lock timeout.",
+            "Language, lock timeout, biometric and notification settings, failed-PIN counters, and reminder or successful-backup dates are stored separately in Android’s private preference storage. These service settings do not contain entry text and are not sent to the developer.",
+            "The app uses Android protections to block ordinary screenshots and hide its contents in the recent-apps view. Protection cannot be guaranteed on a modified or compromised OS, with root access, process-memory extraction, or access to an already unlocked diary. The app does not control your chosen keyboard or its input-processing settings."
+          ]
+        },
+        {
+          "id": "search",
+          "title": "Semantic search",
+          "paragraphs": [
+            "The search model and tokenizer are included in the installation package. Search and indexing run locally. Entry text and queries are not sent to external servers for processing or training. Numerical representations of entries are stored in the encrypted database.",
+            "Model files and the auxiliary cache of public topic examples do not contain your entries or queries. Semantic search is approximate: it may miss relevant entries or return results with a nearby topic."
+          ]
+        },
+        {
+          "id": "files",
+          "title": "Import, export and backups",
+          "paragraphs": [
+            "Documents are accessed through Android’s system file picker. The app reads or writes the documents you select and does not request access to all device files. Import copies text from selected files into the local encrypted database.",
+            "A Markdown ZIP export contains unencrypted, readable text. A .pdiary backup is protected by the password you provide. The portable backup’s protection is independent of the original device’s Android key and app PIN. Restoration requires its password; the developer cannot recover that password.",
+            "Exports include saved entries, dates, moods, tags and favorites. Drafts, trash, the PIN, device key and app settings are not included. Save important drafts as entries before transferring them. Restoring a backup replaces current entries and clears current drafts, trash and search indexes; the indexes are then rebuilt. Set a new PIN separately on a new device.",
+            "The system file provider may be a cloud service. If you select a cloud folder or later share an exported file, data may leave the device through the service you choose. The app does not upload files to a cloud itself. For device-only storage, choose a local folder and manage the copies you create."
+          ]
+        },
+        {
+          "id": "permissions",
+          "title": "Permissions and reminders",
+          "paragraphs": [
+            "Biometrics are used only for local unlock when you enable it. On recent Android versions, notification permission is requested when you enable reminders. Diary and backup reminders are initially off and can be disabled in settings.",
+            "Notifications use generic text without entry content, tags, moods or entry counts. Android is instructed to hide them on the lock screen. Schedules may be restored after reboot, clock or time-zone changes without opening the diary or model. Android may delay reminder delivery.",
+            "The app does not request internet, location, camera, microphone or contacts access. The operating system, installation store, file provider and chosen keyboard operate under their own policies and settings; the app does not control their independent data processing."
+          ]
+        },
+        {
+          "id": "retention",
+          "title": "Retention and deletion",
+          "paragraphs": [
+            "Active entries are retained while you use the app until you delete them. A draft can be discarded from the editor. Deleting a saved entry retains it and its search data in encrypted trash storage for up to 30 days; its draft is deleted. Trashed entries are excluded from the main list, both search modes and export. An entry can be restored before expiry or permanently deleted from the trash at any time with confirmation.",
+            "Expired entries are physically removed from the database after unlocking and periodically while the diary is open. After 30 days, data may therefore remain in the encrypted file until the next cleanup, but restoration through the app is unavailable. Database deletion does not guarantee physical erasure of old flash-memory pages.",
+            "Clearing app data or uninstalling through Android removes the local database and access material in the normal removal process. Automatic system backup and app-data transfer are disabled. You must separately delete exports or backups you previously created in other folders or with a file provider.",
+            "There is no server account, so no server-account deletion request is needed. Losing the PIN or Android keys may make the local diary inaccessible; restoration requires a previously created password-protected backup."
+          ]
+        },
+        {
+          "id": "support-updates",
+          "title": "Support and policy updates",
+          "paragraphs": [
+            "If you email {{SUPPORT_EMAIL}}, the sender address and message are processed to answer your request. Email providers process correspondence under their own policies. Send only information you choose to share by email; a description of the problem without diary text is usually enough.",
+            "Changes to app behavior will be reflected in a new policy version with an updated date. The current policy is available in the app settings and on the public policy page. Questions can be sent to {{SUPPORT_EMAIL}}."
+          ]
+        }
+      ]
+    }
+  }
+}

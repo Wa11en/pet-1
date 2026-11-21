@@ -33,7 +33,7 @@ import ru.privatediary.ui.DiaryUiState
 import ru.privatediary.ui.theme.DiaryStyle
 
 @Composable
-internal fun SetupScreen(state: DiaryUiState, actions: DiaryActions) {
+internal fun SetupScreen(state: DiaryUiState, actions: DiaryActions, onPrivacy: () -> Unit) {
     var pin by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
     var biometrics by remember { mutableStateOf(false) }
@@ -89,12 +89,13 @@ internal fun SetupScreen(state: DiaryUiState, actions: DiaryActions) {
         }
         Spacer(Modifier.height(24.dp))
         PrivacyFootnote()
+        TextButton(onClick = onPrivacy) { Text(stringResource(R.string.privacy_policy_title)) }
         Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-internal fun LockScreen(state: DiaryUiState, actions: DiaryActions) {
+internal fun LockScreen(state: DiaryUiState, actions: DiaryActions, onPrivacy: () -> Unit) {
     var pin by remember { mutableStateOf("") }
     val permitted = !state.busy && state.lockRemainingSeconds <= 0
     val ready = permitted && pin.length in 6..12
@@ -148,6 +149,7 @@ internal fun LockScreen(state: DiaryUiState, actions: DiaryActions) {
         }
         Spacer(Modifier.height(28.dp))
         PrivacyFootnote()
+        TextButton(onClick = onPrivacy) { Text(stringResource(R.string.privacy_policy_title)) }
         Spacer(Modifier.height(16.dp))
     }
 }

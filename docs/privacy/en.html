@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Private Diary stores and processes diary entries on your device. The app does not connect to the internet, display ads or use analytics. Exporting files and contacting support are actions you choose to take.">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Privacy policy — Личный дневник / Private Diary</title>
+  <style>
+    :root { color-scheme: light dark; font: 18px/1.65 system-ui, sans-serif; }
+    body { margin: 0; background: #f8f6ef; color: #25352b; }
+    main { max-width: 48rem; margin: auto; padding: 2rem 1.25rem 4rem; }
+    nav { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+    nav span, .meta { color: #5b6b60; }
+    h1 { font: 600 clamp(2rem, 6vw, 3rem)/1.2 Georgia, serif; margin-bottom: 1rem; }
+    h2 { font-size: 1.3rem; line-height: 1.35; margin-top: 2.25rem; }
+    p { overflow-wrap: anywhere; }
+    a { color: #255b40; text-underline-offset: .2em; }
+    a:focus-visible { outline: 3px solid #a76d42; outline-offset: 4px; }
+    .summary { font-size: 1.1rem; border-left: 3px solid #b68861; padding-left: 1rem; }
+    footer { margin-top: 3rem; border-top: 1px solid #cbd4cb; padding-top: 1rem; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #15211a; color: #e7e8df; }
+      a { color: #a7d5b5; }
+      nav span, .meta { color: #b4c5b9; }
+      footer { border-color: #435348; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav aria-label="Language"><span>Личный дневник / Private Diary</span><a href="index.html" lang="ru">Русский</a></nav>
+    <h1>Privacy policy</h1>
+    <p class="meta">Updated: 2026-11-21 · Version 1</p>
+    <p class="summary">Private Diary stores and processes diary entries on your device. The app does not connect to the internet, display ads or use analytics. Exporting files and contacting support are actions you choose to take.</p>
+    <section>
+      <h2>App and contact</h2>
+      <p>This policy applies to the Android app “Личный дневник / Private Diary”. The public developer name is Private Diary. Questions about the app or privacy can be sent to gr1val@yandex.ru.</p>
+    </section>
+    <section>
+      <h2>Data processed by the app</h2>
+      <p>You decide what to write in your diary. The app processes entry text, dates and times, optional moods, tags and favorites. It also retains unfinished drafts with cursor positions, deleted entries in the trash, and local search indexes, including numerical representations of fragments for semantic search.</p>
+      <p>Diary content, queries and results are not sent to the developer, advertising networks or text-processing services. Queries are used to run a search and are not saved as a query history. The app has no server account, cloud synchronization, advertising modules, analytics or crash-report uploads.</p>
+    </section>
+    <section>
+      <h2>Storage and protection</h2>
+      <p>Entries, drafts, trash and search indexes are stored in an encrypted database on the device. Its random key is protected by Android’s system key storage. While the unlocked diary is running, data is decrypted in memory for display, editing and search.</p>
+      <p>The PIN is checked on the device; the clear-text PIN is not saved. A protected verifier is used for the check. If you enable biometric unlock, Android performs the verification. The app receives its outcome, not biometric templates. You can configure the background lock timeout.</p>
+      <p>Language, lock timeout, biometric and notification settings, failed-PIN counters, and reminder or successful-backup dates are stored separately in Android’s private preference storage. These service settings do not contain entry text and are not sent to the developer.</p>
+      <p>The app uses Android protections to block ordinary screenshots and hide its contents in the recent-apps view. Protection cannot be guaranteed on a modified or compromised OS, with root access, process-memory extraction, or access to an already unlocked diary. The app does not control your chosen keyboard or its input-processing settings.</p>
+    </section>
+    <section>
+      <h2>Semantic search</h2>
+      <p>The search model and tokenizer are included in the installation package. Search and indexing run locally. Entry text and queries are not sent to external servers for processing or training. Numerical representations of entries are stored in the encrypted database.</p>
+      <p>Model files and the auxiliary cache of public topic examples do not contain your entries or queries. Semantic search is approximate: it may miss relevant entries or return results with a nearby topic.</p>
+    </section>
+    <section>
+      <h2>Import, export and backups</h2>
+      <p>Documents are accessed through Android’s system file picker. The app reads or writes the documents you select and does not request access to all device files. Import copies text from selected files into the local encrypted database.</p>
+      <p>A Markdown ZIP export contains unencrypted, readable text. A .pdiary backup is protected by the password you provide. The portable backup’s protection is independent of the original device’s Android key and app PIN. Restoration requires its password; the developer cannot recover that password.</p>
+      <p>Exports include saved entries, dates, moods, tags and favorites. Drafts, trash, the PIN, device key and app settings are not included. Save important drafts as entries before transferring them. Restoring a backup replaces current entries and clears current drafts, trash and search indexes; the indexes are then rebuilt. Set a new PIN separately on a new device.</p>
+      <p>The system file provider may be a cloud service. If you select a cloud folder or later share an exported file, data may leave the device through the service you choose. The app does not upload files to a cloud itself. For device-only storage, choose a local folder and manage the copies you create.</p>
+    </section>
+    <section>
+      <h2>Permissions and reminders</h2>
+      <p>Biometrics are used only for local unlock when you enable it. On recent Android versions, notification permission is requested when you enable reminders. Diary and backup reminders are initially off and can be disabled in settings.</p>
+      <p>Notifications use generic text without entry content, tags, moods or entry counts. Android is instructed to hide them on the lock screen. Schedules may be restored after reboot, clock or time-zone changes without opening the diary or model. Android may delay reminder delivery.</p>
+      <p>The app does not request internet, location, camera, microphone or contacts access. The operating system, installation store, file provider and chosen keyboard operate under their own policies and settings; the app does not control their independent data processing.</p>
+    </section>
+    <section>
+      <h2>Retention and deletion</h2>
+      <p>Active entries are retained while you use the app until you delete them. A draft can be discarded from the editor. Deleting a saved entry retains it and its search data in encrypted trash storage for up to 30 days; its draft is deleted. Trashed entries are excluded from the main list, both search modes and export. An entry can be restored before expiry or permanently deleted from the trash at any time with confirmation.</p>
+      <p>Expired entries are physically removed from the database after unlocking and periodically while the diary is open. After 30 days, data may therefore remain in the encrypted file until the next cleanup, but restoration through the app is unavailable. Database deletion does not guarantee physical erasure of old flash-memory pages.</p>
+      <p>Clearing app data or uninstalling through Android removes the local database and access material in the normal removal process. Automatic system backup and app-data transfer are disabled. You must separately delete exports or backups you previously created in other folders or with a file provider.</p>
+      <p>There is no server account, so no server-account deletion request is needed. Losing the PIN or Android keys may make the local diary inaccessible; restoration requires a previously created password-protected backup.</p>
+    </section>
+    <section>
+      <h2>Support and policy updates</h2>
+      <p>If you email gr1val@yandex.ru, the sender address and message are processed to answer your request. Email providers process correspondence under their own policies. Send only information you choose to share by email; a description of the problem without diary text is usually enough.</p>
+      <p>Changes to app behavior will be reflected in a new policy version with an updated date. The current policy is available in the app settings and on the public policy page. Questions can be sent to gr1val@yandex.ru.</p>
+    </section>
+    <footer><p>Contact about privacy: <a href="mailto:gr1val@yandex.ru">gr1val@yandex.ru</a></p></footer>
+  </main>
+</body>
+</html>
