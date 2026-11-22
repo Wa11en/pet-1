@@ -1,6 +1,7 @@
 package ru.privatediary.store
 
 import android.content.Intent
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
@@ -34,6 +35,13 @@ class StoreScreenshotsTest {
             InstrumentationRegistry.getArguments().getString("captureStoreScreenshots") == "true")
         val previousLocale = Locale.getDefault()
         val previousZone = TimeZone.getDefault()
+        // Connect before Compose creates its virtual accessibility hierarchy.
+        val automation = instrumentation.uiAutomation
+        automation.serviceInfo = automation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        }
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
         val directory = File(instrumentation.targetContext.filesDir, "store-previews").apply { mkdirs() }
         try {
@@ -97,7 +105,8 @@ class StoreScreenshotsTest {
         while (SystemClock.uptimeMillis() < deadline) {
             val root = instrumentation.uiAutomation.rootInActiveWindow
             if (root != null) {
-                val matches = root.findAccessibilityNodeInfosByText(text)
+                // Compose exposes virtual children; provider-side findByText is not reliable.
+                val matches = descendants(root)
                     .filter { node ->
                         node.text?.toString()?.lineSequence()?.any { it.trim() == text } == true ||
                             node.contentDescription?.toString()?.lineSequence()?.any { it.trim() == text } == true
@@ -109,6 +118,17 @@ class StoreScreenshotsTest {
             SystemClock.sleep(100)
         }
         fail("The genuine UI did not expose a clickable '$text' item")
+    }
+
+    private fun descendants(root: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {
+        val queue = java.util.ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
+        val result = mutableListOf<AccessibilityNodeInfo>()
+        while (queue.isNotEmpty() && result.size < 2000) {
+            val node = queue.removeFirst()
+            result += node
+            for (index in 0 until node.childCount) node.getChild(index)?.let(queue::addLast)
+        }
+        return result
     }
 
     private fun clickNodeOrParent(node: AccessibilityNodeInfo): Boolean {

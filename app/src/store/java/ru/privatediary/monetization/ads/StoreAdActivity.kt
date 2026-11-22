@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -35,6 +36,11 @@ class StoreAdActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+            ) { AdsRuntime.finishSession() }
+        }
         if (savedInstanceState != null || !AdsRuntime.claimActivity(intent)) {
             AdsRuntime.finishSession()
             return
@@ -115,6 +121,7 @@ class StoreAdActivity : Activity() {
     }
 
     @Deprecated("Ad task handles back by closing its entire session")
+    @android.annotation.SuppressLint("GestureBackNavigation") // API 26–32 fallback; API 33+ callback is registered above.
     override fun onBackPressed() { AdsRuntime.finishSession() }
 
     override fun onDestroy() {

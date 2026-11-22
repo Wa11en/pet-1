@@ -1,11 +1,11 @@
 <resources>
-    <string name="ads_privacy_title">Посмотреть рекламу</string>
-    <string name="ads_privacy_body">Для просмотра нужно подключение к интернету. Рекламу предоставляет Яндекс: сервис получает IP-адрес и технические данные устройства. Персонализация, геолокация и отчёты о рекламе приложения отключены.\n\nТекст дневника, поисковые запросы, настроение и теги не передаются в запрос рекламы. Дневник продолжает работать без интернета.\n\nПосле закрытия или перехода в фон отдельный рекламный процесс завершается. Подробнее о данных рекламного сервиса: yandex.ru/legal/confidential.</string>
-    <string name="ads_continue">Продолжить и загрузить рекламу</string>
-    <string name="ads_cancel">Отмена</string>
-    <string name="ads_loading_title">Загружаем рекламу</string>
-    <string name="ads_loading_body">Дневник остаётся на устройстве. Можно отменить просмотр в любой момент.</string>
-    <string name="ads_unavailable_title">Реклама недоступна</string>
-    <string name="ads_unavailable_body">Не удалось показать объявление. Это не ограничивает дневник. Возвращаемся к записям.</string>
-    <string name="ads_close">Вернуться в дневник</string>
+    <string name="ads_privacy_title">Watch an ad</string>
+    <string name="ads_privacy_body">Watching requires an internet connection. Yandex provides ads and receives your IP address and technical device data. Personalization, location tracking and app ad analytics reporting are disabled.\n\nDiary text, search queries, mood and tags are not attached to ad requests. Your diary keeps working offline.\n\nThe separate ad process ends after closing the ad or moving it to the background. Ad provider privacy policy: yandex.ru/legal/confidential.</string>
+    <string name="ads_continue">Continue and load an ad</string>
+    <string name="ads_cancel">Cancel</string>
+    <string name="ads_loading_title">Loading an ad</string>
+    <string name="ads_loading_body">Your diary stays on this device. You can cancel at any time.</string>
+    <string name="ads_unavailable_title">Ad unavailable</string>
+    <string name="ads_unavailable_body">The ad could not be shown. Your diary remains available. Returning to your entries.</string>
+    <string name="ads_close">Return to diary</string>
 </resources>

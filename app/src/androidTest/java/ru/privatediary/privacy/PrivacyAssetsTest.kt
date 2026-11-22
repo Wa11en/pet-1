@@ -80,6 +80,9 @@ class PrivacyAssetsTest {
         val service = manager.getServiceInfo(component("io.appmetrica.analytics.internal.AppMetricaService"), disabled)
         assertEquals(expectedProcess, service.processName)
         assertFalse(service.exported)
+        // Runtime-scoped SDK classes are not on lint's compile classpath.
+        Class.forName(service.name, false, context.classLoader)
+        Class.forName("com.google.android.gms.common.api.GoogleApiActivity", false, context.classLoader)
         val metadata = manager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA).metaData
         assertFalse(metadata.getBoolean("com.yandex.mobile.ads.AUTOMATIC_SDK_INITIALIZATION", true))
         val permissions = manager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
