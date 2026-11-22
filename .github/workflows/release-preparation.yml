@@ -44,7 +44,7 @@ jobs:
             gradle-variant: Store
     env:
       # AGP and the runtime signer must use the same disposable runner-owned key.
-      ANDROID_USER_HOME: ${{ runner.temp }}/private-diary-android-user
+      ANDROID_USER_HOME: /tmp/private-diary-android-user
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
