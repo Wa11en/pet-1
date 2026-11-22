@@ -139,6 +139,7 @@ jobs:
           path: |
             release/store/screenshots/*.png
             ${{ runner.temp }}/private-diary-store-capture-${{ matrix.flavor }}/instrumentation.txt
+            ${{ runner.temp }}/private-diary-store-capture-${{ matrix.flavor }}/diagnostics/*.png
       - name: Save unsigned review artifacts and public store materials
         uses: actions/upload-artifact@v4
         with:

@@ -5,6 +5,7 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -43,11 +44,19 @@ class StoreScreenshotsTest {
                 AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-        val directory = File(instrumentation.targetContext.filesDir, "store-previews").apply { mkdirs() }
+        val directory = File(instrumentation.targetContext.filesDir, "store-previews").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        File(instrumentation.targetContext.filesDir, "store-preview-diagnostics").apply {
+            deleteRecursively()
+            mkdirs()
+        }
         try {
             for (language in listOf("ru", "en")) {
                 StorePreviewActivity.languageTag = language
                 for (scene in listOf("journal", "editor", "search", "calendar")) {
+                    reportCapture("Capturing genuine synthetic UI: $language/$scene")
                     val intent = Intent(instrumentation.targetContext, StorePreviewActivity::class.java)
                         .setAction(StorePreviewActivity.ACTION_CAPTURE)
                         .putExtra(StorePreviewActivity.EXTRA_SCENE, scene)
@@ -98,6 +107,10 @@ class StoreScreenshotsTest {
         SystemClock.sleep(450)
         instrumentation.waitForIdleSync()
         assertTrue("Preview did not draw", activity.drawnFrames.get() > 0L)
+    }
+
+    private fun reportCapture(message: String) {
+        instrumentation.sendStatus(2, Bundle().apply { putString("stream", "$message\n") })
     }
 
     private fun clickText(text: String, preferBottom: Boolean = false) {
@@ -170,14 +183,42 @@ class StoreScreenshotsTest {
         }
         assertTrue("PixelCopy did not return", copied.await(10, TimeUnit.SECONDS))
         assertEquals("Could not copy the fixture window", PixelCopy.SUCCESS, status)
-        // Detect blank/blocked windows instead of shipping a misleading store screenshot.
-        val colors = HashSet<Int>()
-        for (y in height / 8 until height * 7 / 8 step 40) {
-            for (x in width / 8 until width * 7 / 8 step 40) colors += bitmap.getPixel(x, y)
+        try {
+            // Keep the actual failed buffer inspectable without publishing it as a store picture.
+            val diagnostic = File(instrumentation.targetContext.filesDir,
+                "store-preview-diagnostics/${target.name}").apply { parentFile!!.mkdirs() }
+            diagnostic.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            // A 40 px grid can skip almost every glyph in a calm, flat Material screen.
+            // Sample densely inside the content area; system bars cannot satisfy these checks.
+            val colors = HashSet<Int>()
+            var minimumLuminance = 255
+            var maximumLuminance = 0
+            var samples = 0
+            var opaqueSamples = 0
+            for (y in height / 8 until height * 7 / 8 step 4) {
+                for (x in width / 8 until width * 7 / 8 step 4) {
+                    val color = bitmap.getPixel(x, y)
+                    colors += color
+                    val luminance = (299 * Color.red(color) + 587 * Color.green(color) +
+                        114 * Color.blue(color)) / 1000
+                    minimumLuminance = minOf(minimumLuminance, luminance)
+                    maximumLuminance = maxOf(maximumLuminance, luminance)
+                    samples++
+                    if (Color.alpha(color) >= 250) opaqueSamples++
+                }
+            }
+            val description = "${target.name}: colors=${colors.size}, luminance=$minimumLuminance..$maximumLuminance, " +
+                "opaque=$opaqueSamples/$samples"
+            reportCapture("PixelCopy genuine synthetic UI: $description")
+            assertTrue("The captured UI appears blank ($description)", colors.size > 16)
+            assertTrue("The captured UI lacks visible content contrast ($description)",
+                maximumLuminance - minimumLuminance >= 32)
+            assertTrue("The captured UI is transparent ($description)", opaqueSamples >= samples * 95 / 100)
+            assertFalse("Secure-window black image is not a store preview ($description)",
+                colors.all { Color.red(it) < 8 && Color.green(it) < 8 && Color.blue(it) < 8 })
+            target.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        } finally {
+            bitmap.recycle()
         }
-        assertTrue("The captured UI appears blank", colors.size > 16)
-        assertFalse("Secure-window black image is not a store preview", colors.all { Color.red(it) < 8 && Color.green(it) < 8 && Color.blue(it) < 8 })
-        target.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-        bitmap.recycle()
     }
 }

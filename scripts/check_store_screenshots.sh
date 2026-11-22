@@ -30,10 +30,27 @@ adb shell wm size 1080x1920
 adb shell wm density 420
 adb install -r "$DEBUG_APK"
 adb install -r -t "$TEST_APK"
+instrumentation_status=0
 timeout 180s adb shell am instrument -w -r -e class "$TEST_CLASS" \
-    -e captureStoreScreenshots true "$TEST_RUNNER" > "$REPORT_DIRECTORY/instrumentation.txt" 2>&1
+    -e captureStoreScreenshots true "$TEST_RUNNER" > "$REPORT_DIRECTORY/instrumentation.txt" 2>&1 || instrumentation_status=$?
 cat "$REPORT_DIRECTORY/instrumentation.txt"
-grep -Eq '^OK \(1 test\)' "$REPORT_DIRECTORY/instrumentation.txt"
+
+# Preserve genuine PixelCopy buffers for diagnosis even after an assertion/runner failure.
+# These files stay outside the public screenshot directory until the whole test passes.
+mkdir -p "$REPORT_DIRECTORY/diagnostics"
+for language in ru en; do
+    for scene in journal editor search calendar; do
+        file="$language-$scene.png"
+        if ! adb exec-out run-as ru.privatediary cat "files/store-preview-diagnostics/$file" \
+            > "$REPORT_DIRECTORY/diagnostics/$file" 2>/dev/null; then
+            rm -f -- "$REPORT_DIRECTORY/diagnostics/$file"
+        fi
+    done
+done
+if [[ "$instrumentation_status" -ne 0 ]] || ! grep -Eq '^OK \(1 test\)' "$REPORT_DIRECTORY/instrumentation.txt"; then
+    echo 'Synthetic screenshot verification failed; inspect instrumentation.txt and the captured diagnostics.' >&2
+    exit 1
+fi
 
 for language in ru en; do
     for scene in journal editor search calendar; do
