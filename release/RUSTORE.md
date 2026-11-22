@@ -25,7 +25,7 @@
 4. **Реклама.** Создать собственный блок Яндекса, проверить условия рекламного договора, сведения для выплат и обязательные раскрытия данных. SDK получает IP и технические данные устройства; нельзя рекламировать `store` как приложение совсем без передачи данных. Текст, настроение, теги, векторы и поисковые запросы не включаются в рекламные запросы.
 5. **Публичные документы.** Опубликовать согласованные политику конфиденциальности, условия платного доступа, порядок возвратов и контакты. Проверить URL без входа в аккаунт. Текст до оплаты должен явно сообщать 99 ₽/месяц, ручное продление, отсутствие автосписаний и состав Pro. Возрастные/географические требования провайдеров оценить по договору.
 
-Официальные точки проверки: [RuStore для разработчиков](https://www.rustore.ru/developer), [требования к приложениям](https://www.rustore.ru/help/developers/publishing-and-verifying-apps/requirement-apps), [YooKassa для самозанятых](https://yookassa.ru/self-employed/), [приём платежей СБП](https://yookassa.ru/developers/payment-acceptance/scenario-extensions/sbp). Это ссылки для проверки условий владельцем, а не подтверждение уже заключённых договоров.
+Официальные точки проверки: [RuStore для разработчиков](https://www.rustore.ru/developer), [требования к приложениям](https://www.rustore.ru/help/developers/publishing-and-verifying-apps/requirement-apps), [YooKassa для самозанятых](https://yookassa.ru/platezhi-dlya-samozanyatyh/), [приём платежей СБП](https://yookassa.ru/developers/payment-acceptance/integration-scenarios/manual-integration/other/sbp). Это ссылки для проверки условий владельцем, а не подтверждение уже заключённых договоров.
 
 ## Настройка и сборка
 
@@ -35,10 +35,26 @@
 ./gradlew assembleStoreDebug testStoreDebugUnitTest \
   -PYAN_AD_UNIT_ID=собственный_рекламный_блок \
   -PPAYMENT_BACKEND_URL=https://payments.example.org \
-  -PPRO_LICENSE_PUBLIC_KEY=публичный_ключ_проверки_лицензии
+  -PPRO_LICENSE_PUBLIC_KEY=публичный_ключ_проверки_лицензии \
+  -PSELLER_LEGAL_NAME="Фамилия Имя Отчество" \
+  -PPRO_TERMS_URL=https://example.org/pro-terms/ \
+  -PPRO_REFUND_URL=https://example.org/refunds/
 ```
 
 `example.org` и поясняющие значения — шаблон команды, их нельзя использовать в выпуске. В APK помещается только публичный ключ проверки, не закрытый ключ и не `YOOKASSA_SECRET_KEY`. Флаги `productionConfigured` в конфигурации выпуска описывают подтверждённую настройку, сами ничего не включают в приложении.
+
+Для `scripts/build_release.sh store` сохраните эти **публичные** параметры в `$GRADLE_USER_HOME/gradle.properties` (обычно `~/.gradle/gradle.properties`). В `.properties` значения пишутся без кавычек. Ключ подписи и секреты YooKassa туда не помещают. Одноразовые `-P...` из предыдущей команды не сохраняются между запусками.
+
+| Gradle property | Источник значения |
+| --- | --- |
+| `YAN_AD_UNIT_ID` | Собственный рабочий блок `R-M-…-…` |
+| `PAYMENT_BACKEND_URL` | Свой HTTPS-сервер; то же значение в `pro.backendUrl` конфигурации выпуска |
+| `PRO_LICENSE_PUBLIC_KEY` | Публичный RSA-ключ сервера в Base64; `pro.licensePublicKey` |
+| `SELLER_LEGAL_NAME` | Настоящее ФИО; `publisher.legalName` и `identity.legal_name` в store-политике должны совпадать |
+| `PRO_TERMS_URL` | Финальные опубликованные условия; `pro.termsUrl` |
+| `PRO_REFUND_URL` | Финальный порядок возвратов; `pro.refundUrl` |
+
+Перед новой покупкой экран Pro показывает продавца и ссылки на документы. Ссылки открываются только по нажатию в браузере; для внешней страницы нужен интернет. Без заполненных сведений новая покупка заблокирована. Проверка ранее созданного платежа и восстановление не зависят от этого дополнительного ограничения. Проверка релиза сравнивает конфигурацию с настройками из DEX самого APK/AAB: заполненный JSON не делает готовым файл, собранный с пустыми параметрами.
 
 Технический кандидат без ключа владельца:
 

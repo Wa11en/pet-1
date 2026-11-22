@@ -21,7 +21,7 @@
   "privacy": {
     "url": "https://wa11en.github.io/pet-1/privacy/store/",
     "publicUrlVerified": false,
-    "policyVersion": "store-1",
+    "policyVersion": "store-2",
     "updatedAt": "2026-11-22",
     "offlineUrl": "https://wa11en.github.io/pet-1/privacy/"
   },
@@ -35,7 +35,8 @@
     "storeScreenshotsReviewed": false,
     "adDisclosureConfirmed": false,
     "thirdPartyPaymentDeclared": false,
-    "coreOfflineDeviceTested": false
+    "coreOfflineDeviceTested": false,
+    "paymentDisclosuresTested": false
   },
   "runtime": {
     "offline": {
@@ -70,7 +71,9 @@
     "receiptsConfigured": false,
     "productionConfigured": false,
     "backendUrl": null,
-    "licensePublicKey": null
+    "licensePublicKey": null,
+    "termsUrl": null,
+    "refundUrl": null
   },
   "ads": {
     "provider": "YandexMobileAds",

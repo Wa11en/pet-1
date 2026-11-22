@@ -1,0 +1,26 @@
+Do I need an account or internet?
+No diary account is needed. Writing, search, locking, import and backups work offline. Ads and Pro payments are unavailable in this preview. A file provider you select may use a connection.
+
+What is free?
+Installation and all core diary features: entries, word and semantic search, locking, import, export and backups. Declining ads or letting Pro expire does not lock these features or delete entries.
+
+Are ads and Pro available?
+No. Production ad and payment integrations are not configured in this preview. The diary and all core features are free. This version does not accept payments or show real ads.
+
+Why did semantic search miss an entry?
+Wait for the local index to finish, try different wording or use word search. Semantic search is approximate and may miss entries or return nearby topics. Both modes support date, mood and tag filters. Speed depends on the phone, entry count and available memory.
+
+How do I protect and transfer entries?
+Set up locking and optionally biometrics on a supported device. To transfer entries, create a .pdiary backup with a separate password and save it somewhere accessible. It contains saved entries, dates, moods, tags and favorites. Drafts, trash, the PIN, device key and settings are excluded. Restoring replaces current entries, clears drafts and trash, and rebuilds the index. Save important drafts and restore wanted trash entries first.
+
+Can you recover a forgotten PIN or backup password?
+The developer cannot recover the PIN, backup password or lost entries. If you can no longer unlock the diary or have lost the device key, only a previously created .pdiary with a known password can restore it after a clean installation. If biometric unlock still works, make a backup first. Uninstalling or clearing app data deletes local entries. Do not do this without a usable backup. Biometrics are optional and do not replace a backup.
+
+Is Markdown encrypted?
+No. A Markdown ZIP contains plain text. Use .pdiary for a protected portable backup. The system file provider you choose when saving may be a cloud service. Ordinary TXT/Markdown import does not restore all backup metadata and does not open ZIP files directly.
+
+Can I restore a deleted entry?
+Restore it from trash within 30 days unless it has been permanently deleted. Drafts and trash are excluded from export and backup. Restore wanted entries to the diary first.
+
+How do I contact support?
+gr1val@yandex.ru. Include the app version, phone model, Android version and steps using a fictional example. Do not send entries, backup files, PINs, passwords, the Pro recovery code or bank details.

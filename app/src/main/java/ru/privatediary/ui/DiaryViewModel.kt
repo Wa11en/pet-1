@@ -287,10 +287,16 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
             paymentsConfigured = graph.payments.isConfigured && graph.proAccess.isVerifierConfigured,
             activeUntilMillis = access.activeUntilMillis, hasAccount = access.hasAccount,
             hasPendingCheckout = access.pendingCheckout != null,
+            sellerLegalName = ru.privatediary.BuildConfig.SELLER_LEGAL_NAME,
+            termsUrl = ru.privatediary.BuildConfig.PRO_TERMS_URL,
+            refundUrl = ru.privatediary.BuildConfig.PRO_REFUND_URL,
         )) }
     }
 
     fun pay() = paymentOperation {
+        val disclosure = _state.value.pro
+        if (!ru.privatediary.monetization.CheckoutDisclosurePolicy.isConfigured(
+            disclosure.sellerLegalName, disclosure.termsUrl, disclosure.refundUrl)) return@paymentOperation
         val pendingCheckout = graph.proAccess.readAccess().pendingCheckout
         val checkout = pendingCheckout ?: graph.payments.createCheckout(graph.proAccess.checkoutIdentity())
             .also { graph.proAccess.saveCheckout(it) }

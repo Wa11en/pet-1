@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import ru.privatediary.R
+import ru.privatediary.monetization.CheckoutDisclosurePolicy
 import ru.privatediary.monetization.ProScreenState
 
 @Composable
@@ -65,12 +66,16 @@ internal fun ProScreen(
     onRestore: (String) -> Unit,
     onRevealRecoveryCode: () -> Unit,
     onBack: () -> Unit,
+    onOpenLegal: (String) -> Unit = {},
 ) {
     var restoreExpanded by remember { mutableStateOf(false) }
     var recoveryInput by remember { mutableStateOf("") }
     var showRecoveryCode by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val enabled = state.paymentsConfigured && !state.busy
+    val disclosuresConfigured = CheckoutDisclosurePolicy.isConfigured(
+        state.sellerLegalName, state.termsUrl, state.refundUrl,
+    )
     Scaffold(topBar = {
         TopAppBar(title = { Text(stringResource(R.string.pro_title)) }, navigationIcon = {
             IconButton(onClick = onBack) {
@@ -111,6 +116,29 @@ internal fun ProScreen(
             Text(stringResource(R.string.pro_network_notice), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
 
+            if (CheckoutDisclosurePolicy.isSellerNameConfigured(state.sellerLegalName)) {
+                Text(stringResource(R.string.pro_seller_legal_name, state.sellerLegalName.trim()),
+                    style = MaterialTheme.typography.bodyMedium)
+            }
+            val hasTermsLink = CheckoutDisclosurePolicy.isAllowedLegalUrl(state.termsUrl)
+            val hasRefundLink = CheckoutDisclosurePolicy.isAllowedLegalUrl(state.refundUrl)
+            if (hasTermsLink || hasRefundLink) {
+                Text(stringResource(R.string.pro_legal_network_notice), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (hasTermsLink) {
+                    TextButton(onClick = { onOpenLegal(state.termsUrl) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.pro_terms_link))
+                    }
+                }
+                if (hasRefundLink) {
+                    TextButton(onClick = { onOpenLegal(state.refundUrl) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.pro_refund_link))
+                    }
+                }
+            }
+            if (!disclosuresConfigured) {
+                Text(stringResource(R.string.pro_legal_unavailable), style = MaterialTheme.typography.bodyMedium)
+            }
             if (!state.paymentsConfigured) {
                 Text(stringResource(R.string.pro_payments_unavailable), style = MaterialTheme.typography.bodyMedium)
             }
@@ -119,7 +147,10 @@ internal fun ProScreen(
             }
             if (state.busy) CircularProgressIndicator(Modifier.size(24.dp))
 
-            Button(onClick = onPay, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+            if (disclosuresConfigured) Text(stringResource(R.string.pro_legal_acceptance),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            Button(onClick = onPay, enabled = enabled && disclosuresConfigured, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(if (state.activeUntilMillis == null) R.string.pro_pay else R.string.pro_renew))
             }
             if (state.hasPendingCheckout) {

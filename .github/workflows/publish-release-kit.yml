@@ -1,0 +1,57 @@
+name: Publish RuStore preparation kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing preview release receiving the preparation ZIP
+        required: true
+        default: v1.0.0-rc2-preview
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-kit-publication
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate the public preparation materials
+        run: |
+          [[ "$RELEASE_TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$ ]]
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+          python3 scripts/test_render_privacy.py
+          python3 scripts/render_privacy.py --check
+          python3 scripts/render_privacy.py --variant store --check
+      - name: Create the ZIP with verified genuine screenshots
+        run: python3 scripts/package_release_kit.py
+      - name: Save the public preparation ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-diary-rustore-release-kit
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            release/artifacts/Private-Diary-RuStore-Release-Kit-*.zip
+            release/artifacts/Private-Diary-RuStore-Release-Kit-*.zip.sha256
+      - name: Attach materials to the existing preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            release/artifacts/Private-Diary-RuStore-Release-Kit-*.zip \
+            release/artifacts/Private-Diary-RuStore-Release-Kit-*.zip.sha256

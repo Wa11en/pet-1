@@ -309,6 +309,181 @@ def dex_classes(data: bytes) -> list[bytes]:
     return result
 
 
+class _DexBuildConfigReader:
+    """Bounded reader for BuildConfig's encoded static literals, not a DEX audit."""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.strings, self.string_offset, self.types, self.type_offset = struct.unpack_from("<IIII", data, 56)
+        self.protos, proto_offset, self.fields, self.field_offset, self.methods, self.method_offset = struct.unpack_from(
+            "<IIIIII", data, 72)
+        for count, offset, size in ((self.protos, proto_offset, 12), (self.fields, self.field_offset, 8),
+                                    (self.methods, self.method_offset, 8)):
+            require((count == 0 and offset == 0) or
+                    (count > 0 and offset >= 112 and offset % 4 == 0 and count <= (len(data) - offset) // size),
+                    "DEX member table outside file")
+        self.string_cache: dict[int, str] = {}
+
+    def uleb(self, offset: int) -> tuple[int, int]:
+        value = 0
+        for count in range(5):
+            require(0 <= offset < len(self.data), "Truncated DEX ULEB128")
+            byte = self.data[offset]
+            offset += 1
+            require(count < 4 or byte <= 15, "Oversized DEX ULEB128")
+            value |= (byte & 127) << (count * 7)
+            if not byte & 128:
+                return value, offset
+        raise ValueError("Oversized DEX ULEB128")
+
+    def string(self, index: int) -> str:
+        require(0 <= index < self.strings, "Invalid DEX string index")
+        if index in self.string_cache:
+            return self.string_cache[index]
+        offset = struct.unpack_from("<I", self.data, self.string_offset + index * 4)[0]
+        require(112 <= offset < len(self.data), "Invalid DEX string offset")
+        length, offset = self.uleb(offset)
+        require(length <= 1024 * 1024, "DEX string is unexpectedly large")
+        # DEX uses modified UTF-8 over UTF-16 code units, including C0 80 for NUL
+        # and two three-byte surrogate encodings for supplementary characters.
+        units = bytearray()
+        for _ in range(length):
+            require(offset < len(self.data), "Truncated DEX string")
+            first = self.data[offset]
+            offset += 1
+            if 0 < first < 128:
+                unit = first
+            elif 0xc0 <= first <= 0xef:
+                count = 1 if first < 0xe0 else 2
+                require(offset + count <= len(self.data), "Truncated DEX string")
+                tail = self.data[offset:offset + count]
+                require(all(byte & 0xc0 == 0x80 for byte in tail), "Invalid DEX modified UTF-8")
+                unit = first & (0x1f if count == 1 else 0x0f)
+                for byte in tail:
+                    unit = (unit << 6) | (byte & 63)
+                require((count == 1 and (unit == 0 or unit >= 128)) or (count == 2 and unit >= 2048),
+                        "Invalid DEX modified UTF-8")
+                offset += count
+            else:
+                raise ValueError("Invalid DEX modified UTF-8")
+            units.extend(struct.pack("<H", unit))
+        require(offset < len(self.data) and self.data[offset] == 0, "Invalid DEX string length/terminator")
+        try:
+            value = units.decode("utf-16-le", errors="strict")
+        except UnicodeDecodeError as error:
+            raise ValueError("Invalid DEX string Unicode") from error
+        self.string_cache[index] = value
+        return value
+
+    def type(self, index: int) -> str:
+        require(0 <= index < self.types, "Invalid DEX field type index")
+        return self.string(struct.unpack_from("<I", self.data, self.type_offset + index * 4)[0])
+
+    def value(self, offset: int) -> tuple[int, object, int]:
+        require(112 <= offset < len(self.data), "Truncated DEX static value")
+        header = self.data[offset]
+        offset += 1
+        kind, argument = header & 31, header >> 5
+        if kind in (0x1e, 0x1f):  # VALUE_NULL / VALUE_BOOLEAN have no payload.
+            require(argument <= (1 if kind == 0x1f else 0), "Invalid DEX static value argument")
+            return kind, bool(argument) if kind == 0x1f else None, offset
+        widths = {0x00: 1, 0x02: 2, 0x03: 2, 0x04: 4, 0x06: 8, 0x10: 4, 0x11: 8, 0x17: 4}
+        require(kind in widths and argument < widths[kind], "Unsupported or invalid DEX static value")
+        width = argument + 1
+        require(width <= len(self.data) - offset, "Truncated DEX static value")
+        raw = self.data[offset:offset + width]
+        offset += width
+        if kind == 0x17:  # VALUE_STRING stores a string_id index.
+            return kind, self.string(int.from_bytes(raw, "little")), offset
+        if kind in (0x10, 0x11):  # Floating-point payloads are right-zero-extended.
+            bits = int.from_bytes(raw, "little") << ((widths[kind] - width) * 8)
+            value = struct.unpack("<f" if kind == 0x10 else "<d", bits.to_bytes(widths[kind], "little"))[0]
+        else:
+            value = int.from_bytes(raw, "little", signed=kind != 0x03)
+        return kind, value, offset
+
+
+def extract_build_settings(data: bytes) -> dict | None:
+    """Read ru.privatediary.BuildConfig static literals; do not execute its code.
+
+    Missing fields retain empty/default report values. This deliberately reads a
+    bounded subset of DEX (primitive/String literals), not arbitrary initializers.
+    """
+    require(len(data) <= 64 * 1024 * 1024, "DEX file is unexpectedly large")
+    classes = dex_classes(data)
+    matches = [index for index, name in enumerate(classes) if name == b"ru/privatediary/BuildConfig"]
+    require(len(matches) <= 1, "Duplicate ru.privatediary.BuildConfig class")
+    if not matches:
+        return None
+    reader = _DexBuildConfigReader(data)
+    class_offset = struct.unpack_from("<I", data, 100)[0] + matches[0] * 32
+    owner = struct.unpack_from("<I", data, class_offset)[0]
+    require(reader.type(owner) == "Lru/privatediary/BuildConfig;", "Invalid DEX BuildConfig descriptor")
+    class_data, static_values = struct.unpack_from("<II", data, class_offset + 24)
+    fields: list[tuple[str, str]] = []
+    names: set[str] = set()
+    if class_data:
+        require(112 <= class_data < len(data), "Invalid DEX class data offset")
+        counts = []
+        cursor = class_data
+        for _ in range(4):
+            count, cursor = reader.uleb(cursor)
+            counts.append(count)
+        require(all(count <= limit for count, limit in zip(counts, (reader.fields, reader.fields, reader.methods, reader.methods))),
+                "Invalid DEX class member counts")
+        for section, count in enumerate(counts):
+            member = 0
+            for position in range(count):
+                delta, cursor = reader.uleb(cursor)
+                require(position == 0 or delta > 0, "Duplicate DEX class member index")
+                member += delta
+                flags, cursor = reader.uleb(cursor)
+                if section < 2:
+                    require(member < reader.fields, "Invalid DEX static field index")
+                    class_index, type_index, name_index = struct.unpack_from("<HHI", data, reader.field_offset + member * 8)
+                    require(class_index == owner, "Invalid DEX field owner")
+                    name, descriptor = reader.string(name_index), reader.type(type_index)
+                    require(name not in names, "Duplicate DEX field name")
+                    names.add(name)
+                    require(bool(flags & 8) == (section == 0), "Invalid DEX static field flags")
+                    if section == 0:
+                        fields.append((name, descriptor))
+                else:
+                    require(member < reader.methods, "Invalid DEX method index")
+                    class_index, proto_index, name_index = struct.unpack_from("<HHI", data, reader.method_offset + member * 8)
+                    require(class_index == owner and proto_index < reader.protos and name_index < reader.strings,
+                            "Invalid DEX method reference")
+                    code_offset, cursor = reader.uleb(cursor)
+                    require(code_offset == 0 or (112 <= code_offset < len(data) and code_offset % 4 == 0),
+                            "Invalid DEX method code offset")
+    values: dict[str, object] = {name: False if descriptor == "Z" else 0 if descriptor in ("B", "S", "C", "I", "J", "F", "D") else None
+                                 for name, descriptor in fields}
+    if static_values:
+        require(112 <= static_values < len(data), "Invalid DEX static values offset")
+        count, cursor = reader.uleb(static_values)
+        require(count <= len(fields), "Too many DEX static values")
+        primitive_types = {"B": 0x00, "S": 0x02, "C": 0x03, "I": 0x04, "J": 0x06,
+                           "F": 0x10, "D": 0x11, "Z": 0x1f}
+        for name, descriptor in fields[:count]:
+            kind, value, cursor = reader.value(cursor)
+            require((descriptor in primitive_types and kind == primitive_types[descriptor]) or
+                    (descriptor == "Ljava/lang/String;" and kind in (0x17, 0x1e)) or
+                    (descriptor.startswith(("L", "[")) and kind == 0x1e), "Invalid DEX static field value type")
+            values[name] = value
+    expected = {"DISTRIBUTION": "Ljava/lang/String;", "NETWORK_FEATURES": "Z", "YAN_AD_UNIT_ID": "Ljava/lang/String;",
+                "PAYMENT_BACKEND_URL": "Ljava/lang/String;", "PRO_LICENSE_PUBLIC_KEY": "Ljava/lang/String;",
+                "SELLER_LEGAL_NAME": "Ljava/lang/String;", "PRO_TERMS_URL": "Ljava/lang/String;", "PRO_REFUND_URL": "Ljava/lang/String;"}
+    require(all(name not in expected or descriptor == expected[name] for name, descriptor in fields),
+            "Unexpected BuildConfig settings field type")
+    public_key = values.get("PRO_LICENSE_PUBLIC_KEY") or ""
+    return {"present": True, "distribution": values.get("DISTRIBUTION") or "",
+            "networkFeatures": values.get("NETWORK_FEATURES", False), "yanAdUnitId": values.get("YAN_AD_UNIT_ID") or "",
+            "paymentBackendUrl": values.get("PAYMENT_BACKEND_URL") or "",
+            "proLicensePublicKeySha256": hashlib.sha256(public_key.encode("utf-8")).hexdigest() if public_key.strip() else None,
+            "sellerLegalName": values.get("SELLER_LEGAL_NAME") or "", "proTermsUrl": values.get("PRO_TERMS_URL") or "",
+            "proRefundUrl": values.get("PRO_REFUND_URL") or ""}
+
+
 def check_dex(data: bytes, name: str, variant: str = "offline") -> None:
     require(variant in ("offline", "store"), "Unknown distribution variant")
     for class_name in dex_classes(data):
@@ -443,12 +618,17 @@ def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru
                 require(hashlib.file_digest(source, "sha256").hexdigest() == expected, f"Offline model SHA-256 mismatch: {name}")
         native = []
         dex_count = 0
+        build_settings = None
         for name in names:
-            if re.fullmatch(r"(?:base/dex/)?classes\d*\.dex", name):
+            if re.fullmatch(r"(?:[^/]+/dex/)?classes\d*\.dex", name):
                 info = archive.getinfo(name)
                 require(info.file_size <= 64 * 1024 * 1024, "DEX file is unexpectedly large")
                 data = archive.read(info)
                 check_dex(data, name, variant)
+                settings = extract_build_settings(data)
+                require(settings is None or build_settings is None, "Duplicate ru.privatediary.BuildConfig across DEX files")
+                if settings is not None:
+                    build_settings = settings
                 dex_count += 1
             if re.fullmatch(r"(?:base/)?lib/[^/]+/[^/]+\.so", name):
                 native.append(elf_alignment(archive.read(name), name))
@@ -468,6 +648,7 @@ def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru
     return {"artifact": path.name, "distribution": variant, "bytes": path.stat().st_size, "sha256": digest,
             "format": "aab" if bundle else "apk", "manifest": manifest,
             "signature": signed, "technicalChecksPassed": True,
+            "buildSettings": build_settings if build_settings is not None else {"present": False},
             "candidateOnly": signed["unsignedCandidate"], "nativeLibraries": native,
             "limitations": limitations}
 

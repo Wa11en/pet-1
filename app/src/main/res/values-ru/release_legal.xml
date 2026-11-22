@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_seller_legal_name">Продавец: %1$s</string>
+    <string name="pro_terms_link">Условия Pro</string>
+    <string name="pro_refund_link">Возвраты</string>
+    <string name="pro_legal_network_notice">Ссылки открывают внешние страницы в браузере. Для их просмотра нужен интернет.</string>
+    <string name="pro_legal_unavailable">Покупка Pro недоступна, пока не указаны сведения о продавце, условия Pro и информация о возвратах. Базовый дневник остаётся бесплатным и работает офлайн.</string>
+    <string name="pro_legal_open_error">Не удалось открыть страницу. Проверьте доступность браузера.</string>
+    <string name="pro_legal_acceptance">Переходя к оплате, вы принимаете условия Pro и ознакомлены с порядком возвратов. Автоматического продления нет.</string>
+</resources>

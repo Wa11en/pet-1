@@ -17,7 +17,8 @@ TOKENS = {"{{DEVELOPER_NAME}}", "{{SUPPORT_EMAIL}}"}
 
 
 def identity(document, developer_name=None, support_email=None):
-    name = (developer_name if developer_name is not None else document["identity"]["public_name"]).strip()
+    name = (developer_name if developer_name is not None else
+            document["identity"].get("legal_name") or document["identity"]["public_name"]).strip()
     email = (support_email if support_email is not None else document["identity"]["support_email"]).strip()
     if not name or len(name) > 160 or any(ord(char) < 32 for char in name):
         raise ValueError("The public developer name must contain 1–160 printable characters")

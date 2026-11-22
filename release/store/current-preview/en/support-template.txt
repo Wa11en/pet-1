@@ -1,0 +1,15 @@
+To: gr1val@yandex.ru
+Subject: Private Diary — preview issue
+
+App version:
+Phone model:
+Android version:
+What happened:
+Steps using fictional data:
+Expected result:
+Error text without personal data:
+
+Do not attach diary text, backups, PINs, passwords or other secrets.
+
+First support reply template:
+Thank you for the report. To investigate, we need the app version, phone model, Android version and steps using a fictional entry. There is no need to resend details already included. Do not send diary content, backups, PINs or passwords. Ads and Pro payments are unavailable in the preview.

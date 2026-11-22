@@ -42,6 +42,9 @@ data class ProScreenState(
     val hasPendingCheckout: Boolean = false,
     val recoveryCode: String? = null,
     val message: String? = null,
+    val sellerLegalName: String = "",
+    val termsUrl: String = "",
+    val refundUrl: String = "",
 ) {
     override fun toString() = "ProScreenState(paymentsConfigured=$paymentsConfigured, busy=$busy, activeUntilMillis=$activeUntilMillis, hasAccount=$hasAccount, hasPendingCheckout=$hasPendingCheckout, recoveryCode=<redacted>, message=<redacted>)"
 }

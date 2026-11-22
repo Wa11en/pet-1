@@ -101,6 +101,15 @@ class MainActivity : AppCompatActivity() {
                             if (!AdsRuntime.show(this)) vm.notify(R.string.ads_not_configured)
                         }
                     },
+                    onOpenLegal = { url ->
+                        val snapshot = vm.state.value
+                        if (snapshot.unlocked && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) &&
+                            url in listOf(snapshot.pro.termsUrl, snapshot.pro.refundUrl) &&
+                            ru.privatediary.monetization.CheckoutDisclosurePolicy.isAllowedLegalUrl(url)) {
+                            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                .onFailure { vm.notify(R.string.pro_legal_open_error) }
+                        }
+                    },
                 ))
             }
         }

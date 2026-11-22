@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
-  "policy_version": "store-1",
+  "policy_version": "store-2",
   "updated_at": "2026-11-22",
   "identity": {
     "app_name": "Личный дневник / Private Diary",
     "public_name": "Private Diary",
-    "support_email": "gr1val@yandex.ru"
+    "support_email": "gr1val@yandex.ru",
+    "legal_name": null
   },
   "locales": {
     "ru": {
@@ -82,7 +83,8 @@
             "Оплата выполняется независимо от магазина размещения через платёжный сервис YooKassa (ЮKassa) и выбранное банковское приложение или браузер. Сетевые запросы приложения выполняются после ваших действий по созданию платежа, проверке его статуса или восстановлению Pro. Регулярных фоновых проверок и обязательного сетевого входа для дневника нет. После получения действующего подписанного подтверждения Pro проверяется локально до указанного срока; выключенный интернет не мешает пользоваться уже активированным доступом.",
             "Платёжный сервер получает случайный идентификатор установки, секретный код восстановления доступа, идентификатор запроса и заказа, выбранный тариф, сумму, валюту, время и статус платежа. Сервер использует защищённое производное значение кода для поиска доступа. Техническое соединение также раскрывает серверу и его инфраструктуре IP-адрес и служебные данные запроса. Эти данные не содержат записи дневника. Полученные от платёжного сервиса идентификатор транзакции и статус используются для подтверждения оплаты и выдачи подписанного доступа.",
             "Банковские реквизиты и данные подтверждения СБП обрабатываются ЮKassa и банком по их правилам, а не вводятся в дневник. Информация о сервисе и его документах: https://yookassa.ru/. Приложение сохраняет локально защищённые служебные данные оплаты, код восстановления и подписанное подтверждение доступа отдельно от записей. Код восстановления является секретом: имеющий его человек может восстановить Pro. Не присылайте его и банковские данные в обычное обращение поддержки.",
-            "Восстановление Pro на другой установке требует сети и сохранённого кода восстановления; оно не переносит дневник, PIN или ключ шифрования. Записи переносятся только вашей резервной копией. Срок действия доступа не означает срок хранения платёжных документов: сведения о транзакциях могут сохраняться для подтверждения оплаты, возвратов и обязательного учёта. Запросы по платежу и данным направляйте на {{SUPPORT_EMAIL}}."
+            "Восстановление Pro на другой установке требует сети и сохранённого кода восстановления; оно не переносит дневник, PIN или ключ шифрования. Записи переносятся только вашей резервной копией. Срок действия доступа не означает срок хранения платёжных документов: сведения о транзакциях могут сохраняться для подтверждения оплаты, возвратов и обязательного учёта. Запросы по платежу и данным направляйте на {{SUPPORT_EMAIL}}.",
+            "Условия Pro и порядок возвратов открываются только по вашему нажатию во внешнем браузере. Для просмотра этих страниц нужен интернет; их сайт получает обычные технические данные соединения браузера. Тексты дневника и секрет восстановления в такие ссылки не добавляются."
           ]
         },
         {
@@ -179,7 +181,8 @@
             "Payments are independent of the distribution store and use YooKassa and your selected banking app or browser. The app makes network requests following your actions to create a payment, check its status or restore Pro. There are no periodic background checks or mandatory online login for the diary. Once a valid signed access confirmation is received, Pro is verified locally until its stated expiry; activated access works without internet.",
             "The payment server receives a random installation identifier, a secret access-recovery code, request and order identifiers, the selected plan, amount, currency, and payment time and status. The server uses a protected value derived from the recovery code to look up access. The technical connection also exposes an IP address and request metadata to the server and its infrastructure. These data do not include diary entries. Transaction identifiers and status received from the payment provider are used to confirm payment and issue signed access.",
             "Bank details and SBP confirmation data are processed by YooKassa and the bank under their own policies and are not entered into the diary. Provider information and documents: https://yookassa.ru/. The app locally stores protected payment service data, the recovery code and signed access confirmation separately from entries. The recovery code is a secret: anyone holding it can restore Pro. Do not include it or bank details in ordinary support messages.",
-            "Restoring Pro on another installation requires a connection and your saved recovery code; it does not transfer the diary, PIN or encryption key. Diary entries are transferred only through a backup you create. Access expiry is not the retention period for payment documents: transaction records may be retained for payment confirmation, refunds and required accounting. Send payment and data questions to {{SUPPORT_EMAIL}}."
+            "Restoring Pro on another installation requires a connection and your saved recovery code; it does not transfer the diary, PIN or encryption key. Diary entries are transferred only through a backup you create. Access expiry is not the retention period for payment documents: transaction records may be retained for payment confirmation, refunds and required accounting. Send payment and data questions to {{SUPPORT_EMAIL}}.",
+            "Pro terms and refund information open in an external browser only when you tap their links. Viewing those pages requires internet; their website receives ordinary technical browser connection data. Diary text and the recovery secret are not added to these links."
           ]
         },
         {

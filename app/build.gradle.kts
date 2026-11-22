@@ -149,12 +149,16 @@ android {
             buildConfigField("String", "YAN_AD_UNIT_ID", "\"\"")
             buildConfigField("String", "PAYMENT_BACKEND_URL", "\"\"")
             buildConfigField("String", "PRO_LICENSE_PUBLIC_KEY", "\"\"")
+            listOf("SELLER_LEGAL_NAME", "PRO_TERMS_URL", "PRO_REFUND_URL").forEach { key ->
+                buildConfigField("String", key, "\"\"")
+            }
         }
         create("store") {
             dimension = "distribution"
             buildConfigField("boolean", "NETWORK_FEATURES", "true")
             buildConfigField("String", "DISTRIBUTION", "\"store\"")
-            listOf("YAN_AD_UNIT_ID", "PAYMENT_BACKEND_URL", "PRO_LICENSE_PUBLIC_KEY").forEach { key ->
+            listOf("YAN_AD_UNIT_ID", "PAYMENT_BACKEND_URL", "PRO_LICENSE_PUBLIC_KEY",
+                "SELLER_LEGAL_NAME", "PRO_TERMS_URL", "PRO_REFUND_URL").forEach { key ->
                 val value = providers.gradleProperty(key).orElse("").get()
                 require(value.none { it.isISOControl() || it == '"' || it == '\\' }) { "Invalid public build setting: $key" }
                 buildConfigField("String", key, "\"$value\"")

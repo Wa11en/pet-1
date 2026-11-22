@@ -1,6 +1,7 @@
 import base64
 import importlib.util
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -31,6 +32,10 @@ class ReadinessTest(unittest.TestCase):
             data = json.loads(path.read_text())
             data['publisher']['legalName'] = self.config['publisher']['legalName']
             path.write_text(json.dumps(data))
+        policy_path = self.root / 'app/src/store/assets/privacy/policy.json'
+        policy = json.loads(policy_path.read_text())
+        policy['identity']['legal_name'] = self.config['publisher']['legalName']
+        policy_path.write_text(json.dumps(policy))
 
     def reports(self, signed=True, version=None, variant='store'):
         paths = []
@@ -41,6 +46,16 @@ class ReadinessTest(unittest.TestCase):
                                  'versionCode': self.config['versionCode'], 'variant': variant},
                     'candidateOnly': not signed,
                     'signature': {'verified': signed, 'certificateSha256': 'b' * 64}}
+            key = self.config['pro'].get('licensePublicKey')
+            data['buildSettings'] = {
+                'present': True, 'distribution': variant, 'networkFeatures': variant == 'store',
+                'yanAdUnitId': self.config['ads'].get('adUnitId'),
+                'paymentBackendUrl': self.config['pro'].get('backendUrl'),
+                'proLicensePublicKeySha256': hashlib.sha256(key.encode('utf-8')).hexdigest() if key else None,
+                'sellerLegalName': self.config['publisher'].get('legalName'),
+                'proTermsUrl': self.config['pro'].get('termsUrl'),
+                'proRefundUrl': self.config['pro'].get('refundUrl'),
+            }
             path = self.root / f'{ext}.json'
             path.write_text(json.dumps(data))
             paths.append(path)
@@ -49,8 +64,9 @@ class ReadinessTest(unittest.TestCase):
     def approve(self):
         self.config['publisher'].update(legalName='Example self-employed publisher', developerAccountVerified=True)
         self.config['pro'].update(providerAccountVerified=True, sbpEnabled=True, receiptsConfigured=True,
-                                  productionConfigured=True, backendUrl='https://payments.publisher.test',
-                                  licensePublicKey=base64.b64encode(b'k' * 91).decode())
+                                  productionConfigured=True, backendUrl='https://payments.publisher.ru',
+                                  licensePublicKey=base64.b64encode(b'k' * 91).decode(),
+                                  termsUrl='https://publisher.ru/pro-terms', refundUrl='https://publisher.ru/refunds')
         self.config['ads'].update(productionConfigured=True, adUnitId='R-M-12345678-1')
         self.config['privacy']['publicUrlVerified'] = True
         self.config['signing'].update(ownerHasKeystoreBackup=True, certificateSha256='b' * 64)
@@ -151,13 +167,66 @@ class ReadinessTest(unittest.TestCase):
         self.save()
         self.assertFalse(module.check(self.root, *self.reports())['submissionReady'])
 
+    def test_json_flags_cannot_approve_an_apk_built_with_empty_payment_settings(self):
+        self.approve()
+        reports = self.reports()
+        path = reports[0]
+        report = json.loads(path.read_text())
+        report['buildSettings']['paymentBackendUrl'] = ''
+        path.write_text(json.dumps(report))
+        result = module.check(self.root, *reports)
+        self.assertFalse(result['submissionReady'])
+        self.assertTrue(any('Настройки монетизации' in value for value in result['blockers']))
+
+    def test_stale_reports_without_bytecode_configuration_are_blocked(self):
+        self.approve()
+        reports = self.reports()
+        for path in reports:
+            report = json.loads(path.read_text())
+            report.pop('buildSettings')
+            path.write_text(json.dumps(report))
+        result = module.check(self.root, *reports)
+        self.assertFalse(result['submissionReady'])
+        self.assertTrue(any('BuildConfig' in value for value in result['blockers']))
+
+    def test_unpublished_terms_or_refunds_block_new_sales(self):
+        self.approve()
+        self.config['pro']['termsUrl'] = None
+        self.config['pro']['refundUrl'] = 'https://publisher.ru:443/refunds'
+        self.save()
+        result = module.check(self.root, *self.reports())
+        self.assertFalse(result['submissionReady'])
+        self.assertTrue(any('условия Pro' in value for value in result['blockers']))
+
+    def test_apk_and_aab_must_both_match_the_actual_license_public_key(self):
+        self.approve()
+        reports = self.reports()
+        report = json.loads(reports[1].read_text())
+        report['buildSettings']['proLicensePublicKeySha256'] = 'c' * 64
+        reports[1].write_text(json.dumps(report))
+        self.assertFalse(module.check(self.root, *reports)['submissionReady'])
+
+    def test_the_public_privacy_policy_cannot_keep_a_different_seller_identity(self):
+        self.approve()
+        policy_path = self.root / 'app/src/store/assets/privacy/policy.json'
+        policy = json.loads(policy_path.read_text())
+        policy['identity']['legal_name'] = None
+        policy_path.write_text(json.dumps(policy))
+        result = module.check(self.root, *self.reports())
+        self.assertFalse(result['submissionReady'])
+        self.assertTrue(any('юридическое имя' in value for value in result['blockers']))
+
     def test_https_url_validation_rejects_credentials_and_insecure_addresses(self):
         for url in ['http://payments.publisher.test', 'https://secret@payments.publisher.test',
                     'https://payments.publisher.test:8080', 'https://localhost', 'https://payments.example.org',
                     'https://payments.publisher.test?secret=value', 'https://payments.publisher.test#fragment']:
             with self.subTest(url=url):
                 self.assertFalse(module.public_https(url))
-        self.assertTrue(module.public_https('https://payments.publisher.test/api'))
+        for url in ['https://payments.publisher.test/api', 'https://127.0.0.1', 'https://publisher.ru/%0a',
+                    'https://@publisher.ru', 'https://publisher.ru?', 'https://publisher.ru#']:
+            with self.subTest(url=url):
+                self.assertFalse(module.public_https(url))
+        self.assertTrue(module.public_https('https://payments.publisher.ru/api'))
 
 
 if __name__ == '__main__':

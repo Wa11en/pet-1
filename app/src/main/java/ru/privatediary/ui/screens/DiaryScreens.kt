@@ -74,7 +74,8 @@ fun DiaryScreens(state: DiaryUiState, actions: DiaryActions) {
             !state.unlocked -> LockScreen(state, actions, onPrivacy = { showPrivacy = true })
             else -> UnlockedScreens(state, actions, onPrivacy = { showPrivacy = true })
         }
-        if (showPrivacy) PrivacyPolicyScreen(ru.privatediary.BuildConfig.PUBLISHER_DISPLAY_NAME,
+        if (showPrivacy) PrivacyPolicyScreen(ru.privatediary.BuildConfig.SELLER_LEGAL_NAME.ifBlank {
+            ru.privatediary.BuildConfig.PUBLISHER_DISPLAY_NAME },
             ru.privatediary.BuildConfig.SUPPORT_EMAIL, onBack = { showPrivacy = false })
         state.errorMessage?.takeUnless { showPrivacy }?.let { message ->
             AlertDialog(onDismissRequest = actions.onDismissError,
@@ -133,7 +134,8 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions, onPrivac
         val close = { actions.onClosePro(); showPro = false }
         BackHandler(onBack = close)
         ProScreen(state.pro, onPay = actions.onPay, onCheckPayment = actions.onCheckPayment,
-            onRestore = actions.onRestorePro, onRevealRecoveryCode = actions.onRevealRecoveryCode, onBack = close)
+            onRestore = actions.onRestorePro, onRevealRecoveryCode = actions.onRevealRecoveryCode, onBack = close,
+            onOpenLegal = actions.onOpenLegal)
     } else if (showInsights && proActive) {
         BackHandler { showInsights = false }
         InsightsScreen(state.entries, onBack = { showInsights = false })

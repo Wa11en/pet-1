@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_seller_legal_name">Seller: %1$s</string>
+    <string name="pro_terms_link">Pro terms</string>
+    <string name="pro_refund_link">Refunds</string>
+    <string name="pro_legal_network_notice">These links open external pages in your browser and need an internet connection.</string>
+    <string name="pro_legal_unavailable">Pro purchases are unavailable until the seller details, Pro terms and refund information are configured. Your basic diary stays free and works offline.</string>
+    <string name="pro_legal_open_error">The page could not be opened. Check that a browser is available.</string>
+    <string name="pro_legal_acceptance">By proceeding to payment, you accept the Pro terms and acknowledge the refund policy. There is no automatic renewal.</string>
+</resources>

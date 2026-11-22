@@ -79,4 +79,5 @@ data class DiaryActions(
     val onRevealRecoveryCode: () -> Unit = {},
     val onClosePro: () -> Unit = {},
     val onShowAd: () -> Unit = {},
+    val onOpenLegal: (String) -> Unit = {},
 )

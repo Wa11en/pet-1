@@ -4,23 +4,42 @@ import argparse
 import base64
 import binascii
 import json
+import hashlib
+import ipaddress
+import re
 from pathlib import Path
 import sys
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def public_https(value):
     try:
+        if not isinstance(value, str) or not 1 <= len(value) <= 8192 or any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in value):
+            return False
         url = urlsplit(value or '')
         host = (url.hostname or '').lower()
-        return (url.scheme == 'https' and bool(host) and '.' in host and
-                not url.username and not url.password and url.port in (None, 443) and
-                not url.query and not url.fragment and
-                host != 'localhost' and host != 'example.org' and not host.endswith('.example.org'))
+        labels = host.split('.')
+        if len(labels) < 2 or any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', item) for item in labels):
+            return False
+        if any(host == suffix or host.endswith('.' + suffix) for suffix in (
+                'localhost', 'local', 'internal', 'test', 'invalid', 'example', 'example.com', 'example.net', 'example.org')):
+            return False
+        try:
+            ipaddress.ip_address(host)
+            return False
+        except ValueError:
+            pass
+        return (url.scheme == 'https' and url.username is None and url.password is None and url.port in (None, 443) and
+                '?' not in value and '#' not in value and
+                not any(ord(char) < 32 or ord(char) == 127 for char in unquote(url.path)))
     except ValueError:
         return False
+
+
+def public_legal_url(value):
+    return public_https(value) and urlsplit(value).port is None
 
 
 def public_key_present(value):
@@ -60,9 +79,11 @@ def check(root, apk_report=None, aab_report=None):
         blockers.append('Подтвердить реальную выдачу чеков НПД/провайдера для статуса владельца.')
     if not pro.get('productionConfigured') or not public_https(pro.get('backendUrl')) or not public_key_present(pro.get('licensePublicKey')):
         blockers.append('Развернуть рабочий HTTPS-сервер оплаты и настроить публичный ключ проверки лицензии; пустые параметры не готовы.')
+    if not public_legal_url(pro.get('termsUrl')) or not public_legal_url(pro.get('refundUrl')):
+        blockers.append('Опубликовать заполненные условия Pro и возвратов и добавить их HTTPS-ссылки перед оплатой.')
     ad_unit = ads.get('adUnitId')
     if (not ads.get('productionConfigured') or not isinstance(ad_unit, str) or
-            not ad_unit.strip() or ad_unit.lower().startswith(('demo', 'test'))):
+            re.fullmatch(r'R-M-[0-9]+-[0-9]+', ad_unit) is None):
         blockers.append('Подключить собственный production-блок рекламы; демонстрационные/пустые параметры не готовы.')
     if not public_https(privacy.get('url')) or not privacy.get('publicUrlVerified'):
         blockers.append('Проверить публичный HTTPS-адрес политики store с раскрытием рекламы и оплаты.')
@@ -71,10 +92,13 @@ def check(root, apk_report=None, aab_report=None):
     for field, label in [('ageRatingConfirmed', 'возрастной рейтинг'), ('ownerApprovedStoreCopy', 'описания для магазина'),
                          ('storeScreenshotsReviewed', 'снимки интерфейса'), ('adDisclosureConfirmed', 'раскрытие рекламы и данных SDK'),
                          ('thirdPartyPaymentDeclared', 'раскрытие прямой сторонней оплаты СБП в RuStore'),
+                         ('paymentDisclosuresTested', 'сведения о продавце и доступность условий/возвратов перед оплатой'),
                          ('coreOfflineDeviceTested', 'проверку бесплатных функций в авиарежиме на телефоне')]:
         if not config['review'].get(field):
             blockers.append('Подтвердить: ' + label + '.')
     policy = json.loads((root / 'app/src/store/assets/privacy/policy.json').read_text())
+    if publisher.get('legalName') and policy['identity'].get('legal_name') != publisher['legalName']:
+        blockers.append('Указать то же юридическое имя владельца в store-политике, карточке и параметрах APK.')
     if policy['identity']['support_email'] != publisher['supportEmail'] or policy['policy_version'] != privacy['policyVersion']:
         raise ValueError('Store policy version or support email differs from the release configuration')
     for language in ('ru', 'en'):
@@ -111,6 +135,19 @@ def check(root, apk_report=None, aab_report=None):
         if (manifest.get('applicationId'), manifest.get('versionName'), manifest.get('versionCode')) != (
                 config['applicationId'], config['versionName'], config['versionCode']):
             blockers.append('Версия или идентификатор артефакта отличается от release-config.json.')
+        settings = data.get('buildSettings', {})
+        key = pro.get('licensePublicKey')
+        expected_settings = {
+            'distribution': 'store', 'networkFeatures': True,
+            'yanAdUnitId': ads.get('adUnitId') or '', 'paymentBackendUrl': pro.get('backendUrl') or '',
+            'proLicensePublicKeySha256': hashlib.sha256(key.encode('utf-8')).hexdigest() if isinstance(key, str) and key.strip() else None,
+            'sellerLegalName': publisher.get('legalName') or '', 'proTermsUrl': pro.get('termsUrl') or '',
+            'proRefundUrl': pro.get('refundUrl') or '',
+        }
+        if settings.get('present') is not True:
+            blockers.append('Отчёт должен проверять настройки BuildConfig из байткода самого APK/AAB.')
+        elif any(settings.get(field) != expected for field, expected in expected_settings.items()):
+            blockers.append('Настройки монетизации/продавца в APK/AAB отличаются от release-config.json; собрать заново с нужными Gradle properties.')
         signed = data.get('signature', {})
         if not signed.get('verified') or data.get('candidateOnly', True):
             blockers.append('Кандидат не подписан производственным ключом владельца.')

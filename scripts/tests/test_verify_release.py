@@ -44,6 +44,71 @@ def dex_fixture(classes=(b"ru/privatediary/MainActivity",), references=()):
     return bytes(result)
 
 
+def build_config_dex(fields=None, encoded_values=None, duplicate_class=False):
+    """Small DEX with real field IDs, delta-encoded class data and static values."""
+    if fields is None:
+        fields = [("DISTRIBUTION", "Ljava/lang/String;", "store"), ("NETWORK_FEATURES", "Z", True)]
+    fields = sorted(fields)
+    owner = "Lru/privatediary/BuildConfig;"
+    types = sorted({owner, *(descriptor for _, descriptor, _ in fields)})
+    strings = sorted({*types, *(name for name, _, _ in fields),
+                      *(value for _, _, value in fields if isinstance(value, str))})
+    string_offset = 112
+    type_offset = string_offset + len(strings) * 4
+    field_offset = type_offset + len(types) * 4
+    class_offset = field_offset + len(fields) * 8
+    class_count = 2 if duplicate_class else 1
+    result = bytearray(class_offset + class_count * 32)
+    result[:8] = b"dex\n035\0"
+    struct.pack_into("<II", result, 36, 112, 0x12345678)
+    struct.pack_into("<IIII", result, 56, len(strings), string_offset, len(types), type_offset)
+    struct.pack_into("<II", result, 80, len(fields), field_offset if fields else 0)
+    struct.pack_into("<II", result, 96, class_count, class_offset)
+    for index, value in enumerate(strings):
+        struct.pack_into("<I", result, string_offset + index * 4, len(result))
+        units = value.encode("utf-16-le")
+        result.extend(integer(len(units) // 2))
+        for position in range(0, len(units), 2):
+            unit = int.from_bytes(units[position:position + 2], "little")
+            if 0 < unit < 128:
+                result.append(unit)
+            elif unit < 2048:
+                result.extend((0xc0 | unit >> 6, 0x80 | unit & 63))
+            else:
+                result.extend((0xe0 | unit >> 12, 0x80 | (unit >> 6) & 63, 0x80 | unit & 63))
+        result.append(0)
+    for index, descriptor in enumerate(types):
+        struct.pack_into("<I", result, type_offset + index * 4, strings.index(descriptor))
+    for index, (name, descriptor, _) in enumerate(fields):
+        struct.pack_into("<HHI", result, field_offset + index * 8, types.index(owner), types.index(descriptor), strings.index(name))
+    class_data = len(result)
+    result.extend(integer(len(fields)) + b"\0\0\0")
+    for index in range(len(fields)):
+        result.extend(integer(0 if index == 0 else 1) + integer(0x19))  # public static final.
+    static_values = len(result)
+    if encoded_values is None:
+        encoded_values = []
+        for _, descriptor, value in fields:
+            if value is None:
+                encoded_values.append(b"\x1e")
+            elif descriptor == "Z":
+                encoded_values.append(bytes([0x1f | int(value) << 5]))
+            elif descriptor == "Ljava/lang/String;":
+                index = strings.index(value)
+                width = max(1, (index.bit_length() + 7) // 8)
+                encoded_values.append(bytes([0x17 | (width - 1) << 5]) + index.to_bytes(width, "little"))
+            else:
+                kinds = {"B": (0x00, 1), "S": (0x02, 2), "C": (0x03, 2), "I": (0x04, 4), "J": (0x06, 8)}
+                kind, width = kinds[descriptor]
+                encoded_values.append(bytes([kind | (width - 1) << 5]) + value.to_bytes(width, "little", signed=descriptor != "C"))
+    result.extend(integer(len(encoded_values)) + b"".join(encoded_values))
+    for index in range(class_count):
+        struct.pack_into("<I", result, class_offset + index * 32, types.index(owner))
+        struct.pack_into("<II", result, class_offset + index * 32 + 24, class_data, static_values)
+    struct.pack_into("<I", result, 32, len(result))
+    return bytes(result)
+
+
 def field(number, value):
     if isinstance(value, int):
         return integer(number << 3) + integer(value)
@@ -355,6 +420,105 @@ class StoreManifestTests(unittest.TestCase):
                 VERIFY.check_manifest(root, "ru.privatediary")
 
 
+class BuildSettingsTests(unittest.TestCase):
+    def test_extracts_actual_static_literals_and_only_hashes_the_public_key(self):
+        key = "synthetic public key\n"
+        fields = [
+            ("DEBUG", "Z", False), ("VERSION_CODE", "I", 42),
+            ("DISTRIBUTION", "Ljava/lang/String;", "store"), ("NETWORK_FEATURES", "Z", True),
+            ("YAN_AD_UNIT_ID", "Ljava/lang/String;", "R-M-123456-1"),
+            ("PAYMENT_BACKEND_URL", "Ljava/lang/String;", "https://pay.example.org"),
+            ("PRO_LICENSE_PUBLIC_KEY", "Ljava/lang/String;", key),
+            ("SELLER_LEGAL_NAME", "Ljava/lang/String;", "ООО Дневник 📘\0"),
+            ("PRO_TERMS_URL", "Ljava/lang/String;", "https://example.org/terms"),
+            ("PRO_REFUND_URL", "Ljava/lang/String;", "https://example.org/refund"),
+        ]
+        settings = VERIFY.extract_build_settings(build_config_dex(fields))
+        self.assertEqual({
+            "present": True, "distribution": "store", "networkFeatures": True,
+            "yanAdUnitId": "R-M-123456-1", "paymentBackendUrl": "https://pay.example.org",
+            "proLicensePublicKeySha256": hashlib.sha256(key.encode()).hexdigest(),
+            "sellerLegalName": "ООО Дневник 📘\0", "proTermsUrl": "https://example.org/terms",
+            "proRefundUrl": "https://example.org/refund",
+        }, settings)
+        self.assertNotIn(key, repr(settings))
+        self.assertNotIn("PRO_LICENSE_PUBLIC_KEY", settings)
+
+    def test_absent_class_and_missing_literals_are_distinct(self):
+        self.assertIsNone(VERIFY.extract_build_settings(dex_fixture()))
+        settings = VERIFY.extract_build_settings(build_config_dex(encoded_values=[]))
+        self.assertTrue(settings["present"])
+        self.assertFalse(settings["networkFeatures"])
+        for name in ("distribution", "yanAdUnitId", "paymentBackendUrl", "sellerLegalName", "proTermsUrl", "proRefundUrl"):
+            self.assertEqual("", settings[name])
+        self.assertIsNone(settings["proLicensePublicKeySha256"])
+        settings = VERIFY.extract_build_settings(build_config_dex([("PRO_LICENSE_PUBLIC_KEY", "Ljava/lang/String;", " \n ")]))
+        self.assertIsNone(settings["proLicensePublicKeySha256"])
+
+    def test_common_primitive_encodings_and_null_strings_are_bounded(self):
+        fields = [("A_BYTE", "B", -2), ("B_SHORT", "S", -300), ("C_CHAR", "C", 0xffff),
+                  ("D_INT", "I", -50000), ("E_LONG", "J", -(1 << 40)),
+                  ("F_FLOAT", "F", 0), ("G_DOUBLE", "D", 0), ("PRO_LICENSE_PUBLIC_KEY", "Ljava/lang/String;", None)]
+        values = [b"\x00\xfe", b"\x22\xd4\xfe", b"\x23\xff\xff", b"\x64\xb0\x3c\xff\xff",
+                  b"\xe6" + (-(1 << 40)).to_bytes(8, "little", signed=True), b"\x10\x3f", b"\x11\x3f", b"\x1e"]
+        self.assertIsNone(VERIFY.extract_build_settings(build_config_dex(fields, values))["proLicensePublicKeySha256"])
+
+    def test_malformed_member_tables_and_indices_are_rejected(self):
+        original = build_config_dex()
+        field_offset = struct.unpack_from("<I", original, 84)[0]
+        class_offset = struct.unpack_from("<I", original, 100)[0]
+        class_data, static_values = struct.unpack_from("<II", original, class_offset + 24)
+        cases = [
+            (84, "<I", len(original) + 4, "member table"),
+            (field_offset, "<H", 0xffff, "field owner"),
+            (field_offset + 2, "<H", 0xffff, "field type index"),
+            (field_offset + 4, "<I", 0xffffffff, "string index"),
+            (class_offset + 24, "<I", len(original), "class data offset"),
+            (class_offset + 28, "<I", len(original), "static values offset"),
+            (class_data, "<B", 127, "member counts"),
+            (class_data + 4, "<B", 127, "field index"),
+            (class_data + 6, "<B", 0, "Duplicate.*member"),
+            (class_data + 5, "<B", 1, "static field flags"),
+            (static_values, "<B", 127, "Too many"),
+            (static_values + 2, "<B", 255, "string index"),
+        ]
+        for offset, format_, value, error in cases:
+            data = bytearray(original)
+            struct.pack_into(format_, data, offset, value)
+            with self.subTest(error=error), self.assertRaisesRegex(ValueError, error):
+                VERIFY.extract_build_settings(bytes(data))
+
+    def test_malformed_value_arguments_lengths_and_types_are_rejected(self):
+        for value in (b"\x97\0\0\0", b"\xff", b"\x3e", b"\x17", b"\x04\0", b"\x1c"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                VERIFY.extract_build_settings(build_config_dex([("DISTRIBUTION", "Ljava/lang/String;", "store")], [value]))
+        data = bytearray(build_config_dex())
+        class_offset = struct.unpack_from("<I", data, 100)[0]
+        class_data = struct.unpack_from("<I", data, class_offset + 24)[0]
+        data[class_data:class_data + 5] = b"\xff" * 5
+        with self.assertRaisesRegex(ValueError, "ULEB128"):
+            VERIFY.extract_build_settings(bytes(data))
+        with self.assertRaisesRegex(ValueError, "settings field type"):
+            VERIFY.extract_build_settings(build_config_dex([("NETWORK_FEATURES", "I", 1)]))
+
+    def test_duplicate_build_config_and_duplicate_field_names_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Duplicate.*BuildConfig"):
+            VERIFY.extract_build_settings(build_config_dex(duplicate_class=True))
+        with self.assertRaisesRegex(ValueError, "Duplicate.*field name"):
+            VERIFY.extract_build_settings(build_config_dex([("DISTRIBUTION", "Ljava/lang/String;", "store")] * 2))
+
+    def test_malformed_modified_utf8_and_string_lengths_are_rejected(self):
+        original = build_config_dex([("DISTRIBUTION", "Ljava/lang/String;", "store")])
+        strings, string_offset = struct.unpack_from("<II", original, 56)
+        target = next(struct.unpack_from("<I", original, string_offset + index * 4)[0] for index in range(strings)
+                      if original[struct.unpack_from("<I", original, string_offset + index * 4)[0]:].startswith(b"\x05store\0"))
+        for offset, value in ((target, 6), (target + 1, 0xf0), (target + 2, 0)):
+            data = bytearray(original)
+            data[offset] = value
+            with self.subTest(offset=offset), self.assertRaises(ValueError):
+                VERIFY.extract_build_settings(bytes(data))
+
+
 class BinaryChecksTests(unittest.TestCase):
     def test_store_bytecode_only_exempts_reviewed_transitive_classes(self):
         for class_name in [p + b"Example" for p in VERIFY.STORE_ALLOWED_DEX_PREFIXES] + list(VERIFY.STORE_ALLOWED_DEX_CLASSES):
@@ -402,10 +566,43 @@ class BinaryChecksTests(unittest.TestCase):
                 self.assertEqual(variant, report["manifest"]["variant"])
                 self.assertTrue(report["technicalChecksPassed"])
                 self.assertTrue(report["candidateOnly"])
+                self.assertEqual({"present": False}, report["buildSettings"])
                 if variant == "store":
                     self.assertTrue(any("same" in text or "shares" in text for text in report["limitations"]))
                     with self.assertRaisesRegex(ValueError, "INTERNET|SDK component in offline"):
                         VERIFY.verify(path, allow_unsigned=True)  # Offline is the fail-closed default.
+
+    def test_apk_and_bundle_report_build_settings_from_later_dex_and_reject_duplicates(self):
+        model = b"synthetic tiny model fixture"
+        hashes = {name: hashlib.sha256(model).hexdigest() for name in ("model_int8.onnx", "tokenizer.json")}
+        bytecode = build_config_dex()
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(VERIFY, "MODEL_HASHES", hashes), \
+                mock.patch.object(VERIFY, "signature", return_value={"verified": False, "unsignedCandidate": True}), \
+                mock.patch.object(VERIFY, "sdk_tool", side_effect=lambda name: name), \
+                mock.patch.object(VERIFY, "run", return_value=subprocess.CompletedProcess([], 0, "")), \
+                mock.patch.object(VERIFY, "aapt_manifest", return_value=store_manifest_xml()):
+            for extension in ("apk", "aab"):
+                with self.subTest(format=extension):
+                    bundle = extension == "aab"
+                    path = Path(folder) / f"store.{extension}"
+                    prefix = "base/" if bundle else ""
+                    dex_prefix = "base/dex/" if bundle else ""
+                    with zipfile.ZipFile(path, "w") as archive:
+                        if bundle:
+                            archive.writestr("base/manifest/AndroidManifest.xml", manifest_protobuf(store_manifest_xml()))
+                            archive.writestr("BundleConfig.pb", field(2, field(2, field(1, 1) + field(2, 2))))
+                        for name in hashes:
+                            archive.writestr(prefix + "assets/model/" + name, model)
+                        archive.writestr(dex_prefix + "classes.dex", dex_fixture())
+                        archive.writestr(dex_prefix + "classes2.dex", bytecode)
+                        archive.writestr(prefix + "lib/arm64-v8a/libexample.so", elf64())
+                    report = VERIFY.verify(path, allow_unsigned=True, variant="store")
+                    self.assertEqual(VERIFY.extract_build_settings(bytecode), report["buildSettings"])
+                    with zipfile.ZipFile(path, "a") as archive:
+                        # Feature-module DEX is scanned too, rather than only base/.
+                        archive.writestr("feature/dex/classes.dex" if bundle else "classes3.dex", bytecode)
+                    with self.assertRaisesRegex(ValueError, "Duplicate.*BuildConfig across DEX"):
+                        VERIFY.verify(path, allow_unsigned=True, variant="store")
 
     def test_16kb_64bit_library_and_bad_4kb_variant(self):
         self.assertEqual(64, VERIFY.elf_alignment(elf64(), "arm64-v8a/libexample.so")["bits"])

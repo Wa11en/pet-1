@@ -1,0 +1,28 @@
+Write down thoughts, events and small discoveries, then return to them by date, word or meaning. Private Diary keeps entries on your device. Writing needs no registration or internet connection.
+
+WRITE AT YOUR OWN PACE
+• Entries with dates, times, moods and tags.
+• A calm editor, large text and automatically saved drafts.
+• Calendar, favorites and On this day memories.
+• A 30-day trash folder and optional local reminders.
+• English and Russian interfaces, with light and dark themes.
+
+FIND WHAT YOU WANT TO REMEMBER
+Search words, fragments inside words and tags, or search by meaning in English and Russian. Narrow results by date, mood and tag. Tap a result to open the matching passage in the editor.
+The model is included in the app. Entries and queries are processed on your device, with no cloud search or model download. Semantic search is approximate: it may miss relevant entries or return nearby topics. Use word search for an exact fragment.
+
+PROTECT YOUR WRITING
+Entries, drafts and search vectors are stored in an encrypted database. Unlock with a PIN or enable biometrics on a supported device. Automatic locking and protection against ordinary screenshots and recent-app previews are included. There is no cloud sync.
+Entry text, moods, tags, vectors and search queries are not sent to the ad service, payment server or developer.
+
+FREE AND PRO
+Installation, writing and editing, both search modes, locking, import and backups are free and work offline.
+Open Yandex ads using a separate button after a data explanation and your consent. Viewing requires internet. The ad SDK transmits an IP address and technical device data and uses technical telemetry. Declining, a failed ad or no connection does not restrict the diary.
+Pro costs RUB 99 per calendar month. It removes ads and adds on-device mood, frequent-tag and writing-regularity statistics. These summarize your marks on the device and do not make medical assessments.
+Each month of access is paid for separately through SBP in a YooKassa payment form, independently of the store's payment services. Renewal is manual, with no automatic debits. Payment, status checks and Pro recovery need a connection. Confirmed access works offline until its stated expiry; core features stay free afterwards.
+
+BACKUPS AND TRANSFER
+Import TXT/Markdown, export entries as a Markdown ZIP, or create an encrypted .pdiary backup with a separate password. Markdown is plain text. You save files through a system file provider of your choice, which may be a cloud service.
+The PIN and backup password cannot be recovered. Drafts and trash are excluded from backups: save what you need as entries first. Make a backup before uninstalling.
+
+Android 8.0 or later. The local model needs free storage and memory; speed depends on your phone.

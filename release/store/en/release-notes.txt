@@ -1,0 +1,6 @@
+First release for RuStore.
+• Encrypted entries with a PIN and optional biometrics.
+• Word and semantic search in English and Russian, processed on your device.
+• Drafts, 30-day trash, calendar, favorites and local reminders.
+• TXT/Markdown import, Markdown export and encrypted backups.
+• Pro: no ads plus on-device statistics, RUB 99 per calendar month. Manual SBP renewal, with no automatic debits.

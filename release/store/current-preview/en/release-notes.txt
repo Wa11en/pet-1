@@ -1,0 +1,6 @@
+Preview version 1.0.0-rc2.
+• Encrypted entries with a PIN and optional biometrics.
+• Word and semantic search in English and Russian, processed on your device.
+• Drafts, 30-day trash, calendar, favorites and local reminders.
+• TXT/Markdown import, Markdown export and encrypted backups.
+Ads and Pro payments are unavailable: production integrations are not configured.

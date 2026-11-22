@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sourceRunUrl": "https://github.com/Wa11en/pet-1/actions/runs/45040712018",
+  "sourceCommit": "a220f1182bf01b97e122750eb4957a05ac76796e",
+  "sourceArtifactId": 14762160327,
+  "capture": "PixelCopy of genuine Compose screens in debug-only preview activity",
+  "diaryContent": "Synthetic public fixtures; no user diary data",
+  "files": {
+    "ru-journal.png": {
+      "sha256": "0d7bad162f0d1a8cc2b5adb42080f89505be6469079cb1c93cd9eeb5cfe3a847",
+      "width": 1080,
+      "height": 1920
+    },
+    "ru-editor.png": {
+      "sha256": "c763bb29449a6b32e3b80e4340807b9aaa13da2955ce4c9feac3a9ecdd602915",
+      "width": 1080,
+      "height": 1920
+    },
+    "ru-search.png": {
+      "sha256": "f4fbc0d88b8cde725d4e43a777c1458a0b97b98bc3d7c23a72f3a12c87d16932",
+      "width": 1080,
+      "height": 1920
+    },
+    "ru-calendar.png": {
+      "sha256": "2b3187c3a3b288a6c6b08cb0b2f3649d26e9df4f198a6536bdf1ad795957250c",
+      "width": 1080,
+      "height": 1920
+    },
+    "en-journal.png": {
+      "sha256": "6a09684fede210d2fe7677fe03524efddd76e79cb7447f7666b0e6b8539435b0",
+      "width": 1080,
+      "height": 1920
+    },
+    "en-editor.png": {
+      "sha256": "e08c9ea2096aa0d2349aebd0fe83b371ebb3a10774a6eccdf8bdde3d5c7fe2d8",
+      "width": 1080,
+      "height": 1920
+    },
+    "en-search.png": {
+      "sha256": "620b1e7906b7a990b13fbe6723bae6818947d9680d90cdad899b20a0b11c5fc3",
+      "width": 1080,
+      "height": 1920
+    },
+    "en-calendar.png": {
+      "sha256": "07192463c789a038d97382b3aefc876bc5c1f7e4b6b14b3c955747520acdaf48",
+      "width": 1080,
+      "height": 1920
+    }
+  }
+}
