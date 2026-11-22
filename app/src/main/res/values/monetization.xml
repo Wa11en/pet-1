@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_title">Private Diary Pro</string>
+    <string name="pro_back">Back</string>
+    <string name="pro_headline">A little more space for yourself</string>
+    <string name="pro_price">99 ₽ for one month</string>
+    <string name="pro_manual_terms">Pay with SBP for one calendar month. Renew manually when you choose. No automatic charges.</string>
+    <string name="pro_active_until">Pro is active until %1$s</string>
+    <string name="pro_no_ads">No ads</string>
+    <string name="pro_no_ads_description">Write and browse your diary without advertising.</string>
+    <string name="pro_insights">Your rhythm</string>
+    <string name="pro_insights_description">Local statistics about writing, moods and tags. Calculated entirely on your phone.</string>
+    <string name="pro_core_free">Entries, offline search, encryption, export and backups stay free. Your diary remains available when Pro expires.</string>
+    <string name="pro_network_notice">Internet is needed only for ads and payment actions. Payment sends a random installation ID and a recovery code, never diary content.</string>
+    <string name="pro_payments_unavailable">Payments are not configured in this build. Your diary works offline as usual.</string>
+    <string name="pro_pay">Pay 99 ₽ with SBP</string>
+    <string name="pro_renew">Add one month · 99 ₽</string>
+    <string name="pro_check_payment">Check payment</string>
+    <string name="pro_check_payment_hint">After paying, return here and tap Check payment. Access is enabled only after secure confirmation.</string>
+    <string name="pro_show_recovery">Show recovery code</string>
+    <string name="pro_restore">Restore access on this phone</string>
+    <string name="pro_restore_hint">Enter the recovery code saved on your previous phone. Restore needs an internet connection and does not transfer diary entries.</string>
+    <string name="pro_recovery_code">Recovery code</string>
+    <string name="pro_restore_submit">Restore Pro</string>
+    <string name="pro_recovery_warning">Keep this code in a safe place. It restores paid access after reinstalling or changing phones. Anyone with the code can use it. It does not back up your diary.</string>
+    <string name="pro_copy_code">Copy code</string>
+    <string name="pro_close">Close</string>
+</resources>

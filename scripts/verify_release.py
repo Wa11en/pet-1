@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline checks for the exact APK/AAB, using only Python, a JDK and Android SDK tools.
+"""Local checks for the exact offline/store APK/AAB, using Python, a JDK and Android SDK tools.
 
 The protobuf reader follows AAPT2 Resources.proto and bundletool config.proto. It
 only implements the wire types used by those schemas and rejects malformed input.
@@ -31,10 +31,33 @@ BANNED_DEX_PREFIXES = (
     b"ru/privatediary/debug/StorePreviewActivity",
     b"com/google/android/gms/ads/", b"com/yandex/mobile/ads/", b"com/my/target/",
     b"com/applovin/", b"com/unity3d/ads/", b"com/facebook/ads/", b"com/vungle/",
-    b"com/ironsource/", b"com/google/firebase/analytics/", b"com/google/firebase/crashlytics/",
+    b"com/ironsource/", b"com/google/firebase/",
     b"io/appmetrica/", b"com/yandex/metrica/", b"io/sentry/", b"com/bugsnag/",
     b"com/microsoft/appcenter/", b"okhttp3/", b"retrofit2/", b"io/ktor/client/", b"com/android/volley/",
 )
+# Reviewed transitive classes of Mobile Ads 8.6.0 / AppMetrica 8.6.0.
+# Optional SDK names in reflection strings are not installed class definitions.
+STORE_ALLOWED_DEX_PREFIXES = (b"com/yandex/mobile/ads/", b"io/appmetrica/", b"okhttp3/",
+                              b"com/google/android/gms/ads/identifier/")
+STORE_ALLOWED_DEX_CLASSES = {b"com/google/firebase/FirebaseException", b"com/google/firebase/FirebaseApiNotAvailableException",
+                             b"com/google/firebase/FirebaseExceptionMapper"}
+# name -> (component kind, must be disabled). Includes the app-owned ad host.
+STORE_AD_COMPONENTS = {
+    "ru.privatediary.monetization.ads.StoreAdActivity": ("activity", False),
+    "com.yandex.mobile.ads.common.AdActivity": ("activity", False),
+    "com.yandex.mobile.ads.core.initializer.YandexAdsInitializeProvider": ("provider", True),
+    "io.appmetrica.analytics.internal.PreloadInfoContentProvider": ("provider", True),
+    "com.yandex.mobile.ads.features.debugpanel.data.local.DebugPanelFileProvider": ("provider", True),
+    "com.yandex.mobile.ads.features.debugpanel.ui.IntegrationInspectorActivity": ("activity", True),
+    "io.appmetrica.analytics.internal.AppMetricaService": ("service", False),
+    "com.google.android.gms.common.api.GoogleApiActivity": ("activity", True),
+}
+SDK_COMPONENT_PREFIXES = tuple(prefix.decode().replace("/", ".") for prefix in BANNED_DEX_PREFIXES) + (
+    "com.yandex.", "com.monetization.ads.", "yads.", "com.google.android.gms.",
+    "ru.privatediary.monetization.ads.",
+)
+AUTOMATIC_AD_INITIALIZATION = "com.yandex.mobile.ads.AUTOMATIC_SDK_INITIALIZATION"
+COMPONENT_TAGS = ("activity", "activity-alias", "service", "receiver", "provider")
 MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
 
@@ -176,19 +199,63 @@ def android_attr(element: ET.Element, name: str, default: str = "") -> str:
     return element.get(f"{{{ANDROID}}}{name}", default)
 
 
-def check_manifest(root: ET.Element, expected_package: str) -> dict:
+def component_name(name: str, package: str) -> str:
+    if name.startswith("."):
+        return package + name
+    return name if "." in name or not name else package + "." + name
+
+
+def check_store_ad_components(application: ET.Element, package: str) -> list[str]:
+    require(android_attr(application, "process") in ("", package), "The diary application must retain its main process")
+    seen = set()
+    for component in application.iter():
+        if component.tag not in COMPONENT_TAGS:
+            continue
+        name = component_name(android_attr(component, "name"), package)
+        target = component_name(android_attr(component, "targetActivity"), package)
+        require(not target.startswith(SDK_COMPONENT_PREFIXES), "Advertising component aliases are forbidden")
+        in_ad_process = android_attr(component, "process") == ":ads"
+        if not name.startswith(SDK_COMPONENT_PREFIXES) and not in_ad_process:
+            continue
+        require(name in STORE_AD_COMPONENTS, f"Unexpected advertising SDK component: {name}")
+        require(name not in seen, f"Duplicate advertising SDK component: {name}")
+        kind, disabled = STORE_AD_COMPONENTS[name]
+        require(component.tag == kind, f"Unexpected advertising component type: {name}")
+        require(in_ad_process, f"Advertising SDK component outside :ads: {name}")
+        require(android_attr(component, "exported") in ("false", "0"), f"Exported advertising SDK component: {name}")
+        enabled = android_attr(component, "enabled", "true")
+        require(enabled in (("false", "0") if disabled else ("true", "1")),
+                f"Advertising SDK component has unexpected enabled state: {name}")
+        seen.add(name)
+    require(seen == set(STORE_AD_COMPONENTS), "The store advertising component allowlist is incomplete")
+    automatic = [item for item in application.iter("meta-data")
+                 if android_attr(item, "name") == AUTOMATIC_AD_INITIALIZATION]
+    require(len(automatic) == 1 and android_attr(automatic[0], "value") in ("false", "0"),
+            "Advertising SDK automatic initialization must be explicitly disabled")
+    return sorted(seen)
+
+
+def check_manifest(root: ET.Element, expected_package: str, variant: str = "offline") -> dict:
+    require(variant in ("offline", "store"), "Unknown distribution variant")
     require(root.tag == "manifest" and root.get("package") == expected_package, "Unexpected application ID")
     permissions = []
     for element in root.iter():
         if element.tag in ("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-m"):
             permission = android_attr(element, "name")
             require(bool(permission) and not permission.startswith(("@", "0x")), "Unresolved permission name")
-            require(permission != "android.permission.INTERNET", "INTERNET permission is forbidden")
+            require(variant == "store" or permission != "android.permission.INTERNET", "INTERNET permission is forbidden")
+            require(permission != "com.google.android.gms.permission.AD_ID" and
+                    not permission.startswith("android.permission.ACCESS_ADSERVICES"),
+                    "Advertising identifier and AdServices permissions are forbidden")
             permissions.append(permission)
-        if element.tag in ("activity", "activity-alias", "service", "receiver", "instrumentation"):
-            component = android_attr(element, "name")
+        if element.tag in (*COMPONENT_TAGS, "instrumentation"):
+            component = component_name(android_attr(element, "name"), expected_package)
             require(not re.search(r"(?:preview|screenshot|androidtest).*activity|androidx\.test\.", component, re.I),
                     "Test or store-preview component found in production manifest")
+            if variant == "offline":
+                target = component_name(android_attr(element, "targetActivity"), expected_package)
+                require(not component.startswith(SDK_COMPONENT_PREFIXES) and not target.startswith(SDK_COMPONENT_PREFIXES),
+                        f"Advertising/analytics/network SDK component in offline manifest: {component}")
         if element.tag == "instrumentation":
             raise ValueError("Instrumentation must not be present in the production artifact")
     application = root.find("application")
@@ -196,14 +263,60 @@ def check_manifest(root: ET.Element, expected_package: str) -> dict:
     for flag in ("debuggable", "testOnly", "allowBackup"):
         value = android_attr(application, flag, "false")
         require(value in ("false", "0"), f"android:{flag} must be false")
+    ad_components = []
+    if variant == "store":
+        require("android.permission.INTERNET" in permissions, "The store variant must declare INTERNET")
+        require(android_attr(application, "usesCleartextTraffic") in ("false", "0"),
+                "Store usesCleartextTraffic must be explicitly false")
+        require(root.find("queries") is None, "Installed-app discovery queries are forbidden in the store variant")
+        ad_components = check_store_ad_components(application, expected_package)
     sdk = root.find("uses-sdk")
     require(sdk is not None, "SDK declaration is missing")
     minimum = int(android_attr(sdk, "minSdkVersion"))
     target = int(android_attr(sdk, "targetSdkVersion"))
     require(minimum == 26 and target >= 35, "Unexpected minSdk or obsolete targetSdk")
-    return {"applicationId": expected_package, "versionName": android_attr(root, "versionName"),
+    result = {"applicationId": expected_package, "variant": variant, "versionName": android_attr(root, "versionName"),
             "versionCode": int(android_attr(root, "versionCode")), "minSdk": minimum, "targetSdk": target,
             "permissions": sorted(permissions), "debuggable": False, "testOnly": False, "allowBackup": False}
+    if variant == "store":
+        result.update(usesCleartextTraffic=False, advertisingProcess=":ads", advertisingComponents=ad_components,
+                      automaticAdInitialization=False, advertisingProcessHasSeparateUid=False)
+    return result
+
+
+def dex_classes(data: bytes) -> list[bytes]:
+    """Read declared DEX classes, excluding references and SDK-presence probes."""
+    require(len(data) >= 112 and data[:4] == b"dex\n" and data[4:8] in
+            (b"035\0", b"037\0", b"038\0", b"039\0", b"040\0"), "Invalid or unsupported DEX header")
+    require(struct.unpack_from("<III", data, 32) == (len(data), 112, 0x12345678), "Invalid DEX size/endian header")
+    strings, string_offset, types, type_offset = struct.unpack_from("<IIII", data, 56)
+    classes, class_offset = struct.unpack_from("<II", data, 96)
+    require(0 < classes <= types <= strings, "Invalid DEX table counts")
+    for count, offset, size in ((strings, string_offset, 4), (types, type_offset, 4), (classes, class_offset, 32)):
+        require(offset >= 112 and offset % 4 == 0 and count <= (len(data) - offset) // size, "DEX table outside file")
+    result = []
+    for index in range(classes):
+        type_index = struct.unpack_from("<I", data, class_offset + index * 32)[0]
+        require(type_index < types, "Invalid DEX class type index")
+        string_index = struct.unpack_from("<I", data, type_offset + type_index * 4)[0]
+        require(string_index < strings, "Invalid DEX descriptor index")
+        start = struct.unpack_from("<I", data, string_offset + string_index * 4)[0]
+        require(112 <= start < len(data), "Invalid DEX string offset")
+        _, start = varint(data, start)
+        end = data.find(b"\0", start, min(len(data), start + 65536))
+        require(end > start and data[start:start + 1] == b"L" and data[end - 1:end] == b";", "Invalid DEX class descriptor")
+        result.append(data[start + 1:end - 1])
+    return result
+
+
+def check_dex(data: bytes, name: str, variant: str = "offline") -> None:
+    require(variant in ("offline", "store"), "Unknown distribution variant")
+    for class_name in dex_classes(data):
+        if variant == "store" and (class_name in STORE_ALLOWED_DEX_CLASSES or
+                                   class_name.startswith(STORE_ALLOWED_DEX_PREFIXES)):
+            continue
+        require(not class_name.startswith(BANNED_DEX_PREFIXES),
+                f"Forbidden advertising/analytics/network SDK class in {name}: {class_name.decode(errors='replace')}")
 
 
 def elf_alignment(data: bytes, name: str) -> dict:
@@ -307,7 +420,9 @@ def signature(path: Path, archive: zipfile.ZipFile, bundle: bool, allow_unsigned
     return {"verified": True, "unsignedCandidate": False, "certificateSha256": digests[0].lower()}
 
 
-def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru.privatediary") -> dict:
+def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru.privatediary",
+           variant: str = "offline") -> dict:
+    require(variant in ("offline", "store"), "Unknown distribution variant")
     require(path.suffix.lower() in (".apk", ".aab") and path.is_file(), "Provide an APK or AAB file")
     bundle = path.suffix.lower() == ".aab"
     with zipfile.ZipFile(path) as archive:
@@ -321,7 +436,7 @@ def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru
         else:
             root = aapt_manifest(run([sdk_tool("aapt"), "dump", "xmltree", str(path), "AndroidManifest.xml"]).stdout)
             run([sdk_tool("zipalign"), "-c", "-P", "16", "4", str(path)])
-        manifest = check_manifest(root, expected_package)
+        manifest = check_manifest(root, expected_package, variant)
         model_prefix = "base/assets/model/" if bundle else "assets/model/"
         for name, expected in MODEL_HASHES.items():
             with archive.open(model_prefix + name) as source:
@@ -333,9 +448,7 @@ def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru
                 info = archive.getinfo(name)
                 require(info.file_size <= 64 * 1024 * 1024, "DEX file is unexpectedly large")
                 data = archive.read(info)
-                for prefix in BANNED_DEX_PREFIXES:
-                    require(prefix not in data and prefix.replace(b"/", b".") not in data,
-                            f"Forbidden advertising/analytics/network SDK signature in {name}: {prefix.decode()}")
+                check_dex(data, name, variant)
                 dex_count += 1
             if re.fullmatch(r"(?:base/)?lib/[^/]+/[^/]+\.so", name):
                 native.append(elf_alignment(archive.read(name), name))
@@ -343,13 +456,20 @@ def verify(path: Path, allow_unsigned: bool = False, expected_package: str = "ru
         signed = signature(path, archive, bundle, allow_unsigned)
     with path.open("rb") as source:
         digest = hashlib.file_digest(source, "sha256").hexdigest()
-    return {"artifact": path.name, "bytes": path.stat().st_size, "sha256": digest,
+    limitations = ["Store publisher/account approval is a separate check.",
+                   "Test installed APK splits on real devices, including a 16-KB-page device.",
+                   "Known SDK bytecode signatures are checked; this is not a complete third-party security audit."]
+    if variant == "store":
+        limitations.extend([
+            "INTERNET is an application-wide Android permission; this check is not a network firewall.",
+            "The :ads process shares the diary's Android UID and is not a separate security sandbox.",
+            "Yandex Mobile Ads includes AppMetrica; process and metadata checks do not prove zero SDK telemetry.",
+        ])
+    return {"artifact": path.name, "distribution": variant, "bytes": path.stat().st_size, "sha256": digest,
             "format": "aab" if bundle else "apk", "manifest": manifest,
             "signature": signed, "technicalChecksPassed": True,
             "candidateOnly": signed["unsignedCandidate"], "nativeLibraries": native,
-            "limitations": ["Store seller/account approval is a separate check.",
-                            "Test installed APK splits on real devices, including a 16-KB-page device.",
-                            "Known SDK bytecode signatures are checked; this is not a complete third-party security audit."]}
+            "limitations": limitations}
 
 
 def main() -> int:
@@ -358,10 +478,12 @@ def main() -> int:
     parser.add_argument("--allow-unsigned-candidate", action="store_true",
                         help="Verify an unsigned review candidate; does not make it store-uploadable")
     parser.add_argument("--application-id", default="ru.privatediary")
+    parser.add_argument("--variant", choices=("offline", "store"), default="offline",
+                        help="Expected distribution; offline rejects INTERNET and advertising/network SDK bytecode")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     try:
-        result = verify(args.artifact, args.allow_unsigned_candidate, args.application_id)
+        result = verify(args.artifact, args.allow_unsigned_candidate, args.application_id, args.variant)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

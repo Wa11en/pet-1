@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="privacy_intro">Дневник зашифрован на устройстве и работает офлайн. Интернет нужен только для выбранного вами просмотра рекламы и действий по оплате Pro.</string>
+    <string name="privacy_detail">Записи и поиск по смыслу обрабатываются на устройстве. Сборка для магазина использует интернет для рекламы после вашего подтверждения и для оплаты или восстановления Pro. Текст дневника в эти запросы не входит. Рекламный и платёжный сервисы получают технические данные; подробности — в политике конфиденциальности.</string>
+    <string name="auth_privacy_note">Дневник зашифрован и работает офлайн. Просмотр рекламы и оплата Pro используют интернет после вашего действия.</string>
+    <string name="settings_privacy_summary">Записи зашифрованы и обрабатываются на этом устройстве.</string>
+    <string name="settings_privacy_caption">Дневник офлайн. Реклама и платежи — по вашему выбору.</string>
+    <string name="privacy_title">Защита ваших записей</string>
+    <string name="design_private_badge">ЗАПИСИ НА ВАШЕМ УСТРОЙСТВЕ</string>
+    <string name="app_version_label">Версия %1$s · дневник работает офлайн</string>
+    <string name="privacy_policy_description">Локальный дневник, данные рекламы и оплата Pro</string>
+</resources>

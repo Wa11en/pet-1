@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Private Diary: the free RuStore edition with optional ad viewing and Pro access. Entries, search, encryption and backups work on the device without internet. Networking follows your action to view an ad, pay for Pro or restore access; external services process technical and payment data during those actions.">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Privacy policy — Личный дневник / Private Diary</title>
+  <style>
+    :root { color-scheme: light dark; font: 18px/1.65 system-ui, sans-serif; }
+    body { margin: 0; background: #f8f6ef; color: #25352b; }
+    main { max-width: 48rem; margin: auto; padding: 2rem 1.25rem 4rem; }
+    nav { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+    nav span, .meta { color: #5b6b60; }
+    h1 { font: 600 clamp(2rem, 6vw, 3rem)/1.2 Georgia, serif; margin-bottom: 1rem; }
+    h2 { font-size: 1.3rem; line-height: 1.35; margin-top: 2.25rem; }
+    p { overflow-wrap: anywhere; }
+    a { color: #255b40; text-underline-offset: .2em; }
+    a:focus-visible { outline: 3px solid #a76d42; outline-offset: 4px; }
+    .summary { font-size: 1.1rem; border-left: 3px solid #b68861; padding-left: 1rem; }
+    footer { margin-top: 3rem; border-top: 1px solid #cbd4cb; padding-top: 1rem; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #15211a; color: #e7e8df; }
+      a { color: #a7d5b5; }
+      nav span, .meta { color: #b4c5b9; }
+      footer { border-color: #435348; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav aria-label="Language"><span>Личный дневник / Private Diary</span><a href="index.html" lang="ru">Русский</a></nav>
+    <h1>Privacy policy</h1>
+    <p class="meta">Updated: 2026-11-22 · Version store-1</p>
+    <p class="summary">Private Diary: the free RuStore edition with optional ad viewing and Pro access. Entries, search, encryption and backups work on the device without internet. Networking follows your action to view an ad, pay for Pro or restore access; external services process technical and payment data during those actions.</p>
+    <section>
+      <h2>App and contact</h2>
+      <p>This policy applies to the Android app “Личный дневник / Private Diary”. The public developer name is Private Diary. Questions about the app or privacy can be sent to gr1val@yandex.ru. This policy covers the store build with advertising and payments. The separate offline build without network permission has its own locally bundled policy.</p>
+    </section>
+    <section>
+      <h2>Data processed by the app</h2>
+      <p>You decide what to write in your diary. The app processes entry text, dates and times, optional moods, tags and favorites. It also retains unfinished drafts with cursor positions, deleted entries in the trash, and local search indexes, including numerical representations of fragments for semantic search.</p>
+      <p>Entry text, search queries and results, moods, tags, favorites and entry identifiers are not attached to the app’s advertising or payment requests. Queries are used for local search and are not saved as query history. There is no server-side diary account or cloud synchronization. Pro mood, tag and writing-regularity statistics are calculated on the device. Diary user analytics and diary crash-report uploads to the developer are not enabled; technical data processing by the ad SDK is described separately below.</p>
+    </section>
+    <section>
+      <h2>Storage and protection</h2>
+      <p>Entries, drafts, trash and search indexes are stored in an encrypted database on the device. Its random key is protected by Android’s system key storage. While the unlocked diary is running, data is decrypted in memory for display, editing and search.</p>
+      <p>The PIN is checked on the device; the clear-text PIN is not saved. A protected verifier is used for the check. If you enable biometric unlock, Android performs the verification. The app receives its outcome, not biometric templates. You can configure the background lock timeout.</p>
+      <p>Language, lock timeout, biometric and notification settings, failed-PIN counters, and reminder or successful-backup dates are stored separately in Android’s private preference storage. These service settings do not contain entry text and are not sent to the developer.</p>
+      <p>The app uses Android protections to block ordinary screenshots and hide its contents in the recent-apps view. Protection cannot be guaranteed on a modified or compromised OS, with root access, process-memory extraction, or access to an already unlocked diary. The app does not control your chosen keyboard or its input-processing settings.</p>
+    </section>
+    <section>
+      <h2>Semantic search</h2>
+      <p>The search model and tokenizer are included in the installation package. Search and indexing run locally. Entry text and queries are not sent to external servers for processing or training. Numerical representations of entries are stored in the encrypted database.</p>
+      <p>Model files and the auxiliary cache of public topic examples do not contain your entries or queries. Semantic search is approximate: it may miss relevant entries or return results with a nearby topic.</p>
+    </section>
+    <section>
+      <h2>Import, export and backups</h2>
+      <p>Documents are accessed through Android’s system file picker. The app reads or writes the documents you select and does not request access to all device files. Import copies text from selected files into the local encrypted database.</p>
+      <p>A Markdown ZIP export contains unencrypted, readable text. A .pdiary backup is protected by the password you provide. The portable backup’s protection is independent of the original device’s Android key and app PIN. Restoration requires its password; the developer cannot recover that password.</p>
+      <p>Exports include saved entries, dates, moods, tags and favorites. Drafts, trash, the PIN, device key and app settings are not included. Save important drafts as entries before transferring them. Restoring a backup replaces current entries and clears current drafts, trash and search indexes; the indexes are then rebuilt. Set a new PIN separately on a new device.</p>
+      <p>The system file provider may be a cloud service. If you select a cloud folder or later share an exported file, data may leave the device through the service you choose. The app does not upload files to a cloud itself. For device-only storage, choose a local folder and manage the copies you create.</p>
+    </section>
+    <section>
+      <h2>Permissions and reminders</h2>
+      <p>Biometrics are used only for local unlock when you enable it. On recent Android versions, notification permission is requested when you enable reminders. Diary and backup reminders are initially off and can be disabled in settings.</p>
+      <p>Notifications use generic text without entry content, tags, moods or entry counts. Android is instructed to hide them on the lock screen. Schedules may be restored after reboot, clock or time-zone changes without opening the diary or model. Android may delay reminder delivery.</p>
+      <p>The store build declares Android’s INTERNET permission for optional ad viewing, payment creation and status checks, and Pro restoration. Android does not let the app switch this normal permission on and off for each view. The app does not request location, camera, microphone or contacts; the AD_ID advertising-identifier permission is removed from this build. Core diary features work in airplane mode. The operating system, installation store, file provider, browser, banking app and chosen keyboard process data under their own policies.</p>
+    </section>
+    <section>
+      <h2>Advertising and technical data</h2>
+      <p>Yandex provides ads through Yandex Mobile Ads SDK 8.6.0. Automatic SDK initialization, its preload provider and debugging tools are disabled. The app does not preload ads. The SDK is not initialized until you choose Watch an ad and accept a separate explanation of technical-data processing. Background ads, editor banners and automatic load retries are not used. Declining an ad does not limit the diary.</p>
+      <p>To request and display an ad, the provider may receive an IP address; device, OS, app and connection information; technical identifiers available to the SDK; and information about loading, impressions, errors and ad interactions. An IP address may be used to infer an approximate region. Before SDK initialization, we disable personalization consent, location tracking and App Ad Analytics reporting. These settings do not eliminate all technical measurement: SDK dependencies, including AppMetrica, may participate in ad delivery. Yandex’s policy: https://yandex.ru/legal/confidential/.</p>
+      <p>The app’s ad requests contain only the ad placement identifier; diary text, moods, tags, search queries, entry identifiers and the Pro recovery code are not attached. The SDK runs in a separate :ads process, and the app does not pass the diary graph or database to it. The process has the same Android UID: process separation is not a separate security sandbox or cryptographic isolation from third-party code.</p>
+      <p>The ad process ends when all ad screens close or move to the background, on cancellation or when its time limit is reached. A single-use launch permit prevents it restarting on its own without a new user action. This ends that process’s threads and connections; it is not a promise about independent OS, store or external-browser traffic or proof of third-party SDK behavior on every Android version. Network behavior is checked separately before release.</p>
+    </section>
+    <section>
+      <h2>Pro, SBP and payment data</h2>
+      <p>The free version includes creating and editing entries, both search modes, encryption, import, export and backups. Pro costs RUB 99 per month, removes ads and adds local mood, tag and writing-regularity statistics. Each further month requires a separately confirmed SBP payment; there is no automatic renewal, saved payment method for recurring charges or automatic debit. The price and access period are shown before confirmation.</p>
+      <p>Payments are independent of the distribution store and use YooKassa and your selected banking app or browser. The app makes network requests following your actions to create a payment, check its status or restore Pro. There are no periodic background checks or mandatory online login for the diary. Once a valid signed access confirmation is received, Pro is verified locally until its stated expiry; activated access works without internet.</p>
+      <p>The payment server receives a random installation identifier, a secret access-recovery code, request and order identifiers, the selected plan, amount, currency, and payment time and status. The server uses a protected value derived from the recovery code to look up access. The technical connection also exposes an IP address and request metadata to the server and its infrastructure. These data do not include diary entries. Transaction identifiers and status received from the payment provider are used to confirm payment and issue signed access.</p>
+      <p>Bank details and SBP confirmation data are processed by YooKassa and the bank under their own policies and are not entered into the diary. Provider information and documents: https://yookassa.ru/. The app locally stores protected payment service data, the recovery code and signed access confirmation separately from entries. The recovery code is a secret: anyone holding it can restore Pro. Do not include it or bank details in ordinary support messages.</p>
+      <p>Restoring Pro on another installation requires a connection and your saved recovery code; it does not transfer the diary, PIN or encryption key. Diary entries are transferred only through a backup you create. Access expiry is not the retention period for payment documents: transaction records may be retained for payment confirmation, refunds and required accounting. Send payment and data questions to gr1val@yandex.ru.</p>
+    </section>
+    <section>
+      <h2>Retention and deletion</h2>
+      <p>Active entries are retained while you use the app until you delete them. A draft can be discarded from the editor. Deleting a saved entry retains it and its search data in encrypted trash storage for up to 30 days; its draft is deleted. Trashed entries are excluded from the main list, both search modes and export. An entry can be restored before expiry or permanently deleted from the trash at any time with confirmation.</p>
+      <p>Expired entries are physically removed from the database after unlocking and periodically while the diary is open. After 30 days, data may therefore remain in the encrypted file until the next cleanup, but restoration through the app is unavailable. Database deletion does not guarantee physical erasure of old flash-memory pages.</p>
+      <p>Clearing app data or uninstalling through Android removes the local database and access material in the normal removal process. Automatic system backup and app-data transfer are disabled. You must separately delete exports or backups you previously created in other folders or with a file provider.</p>
+      <p>There is no server-side diary account. Uninstalling does not cancel an already completed payment or itself remove payment-service records or data already processed by the ad provider. Payment data categories are described below; send retention or deletion questions to gr1val@yandex.ru. Advertising and payment organizations also follow their own policies and applicable retention obligations. If the PIN or Android keys are lost, restoring the diary requires a previously created password-protected backup.</p>
+    </section>
+    <section>
+      <h2>Support and policy updates</h2>
+      <p>If you email gr1val@yandex.ru, the sender address and message are processed to answer your request. Email providers process correspondence under their own policies. Send only information you choose to share by email; a description of the problem without diary text is usually enough.</p>
+      <p>Changes to app behavior will be reflected in a new policy version with an updated date. The current policy is available in the app settings and on the public policy page. Questions can be sent to gr1val@yandex.ru.</p>
+    </section>
+    <footer><p>Contact about privacy: <a href="mailto:gr1val@yandex.ru">gr1val@yandex.ru</a></p></footer>
+  </main>
+</body>
+</html>

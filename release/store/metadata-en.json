@@ -4,35 +4,39 @@
   "submissionReady": false,
   "applicationId": "ru.privatediary",
   "displayName": "Private Diary",
-  "shortDescription": "An encrypted diary with offline semantic search. No ads.",
-  "fullDescription": "Keep your thoughts, events and memories in a personal diary that runs on your device. Semantic search helps you return to an entry even when you cannot remember its exact words.\n\nA PLACE TO WRITE\n• Entries with date, time, mood and tags.\n• Automatic draft saving with cursor recovery.\n• A calm editor with large text; mood and tags live in the expandable Details menu.\n• Calendar, favorites and On this day memories.\n• A 30-day trash folder and undo after deletion.\n• Optional local reminders to write and create a backup.\n\nSEARCH BY WORDS OR MEANING\n• Find fragments within words and tags.\n• Semantic search in English and Russian.\n• Filter by dates, mood and tag.\n• Open the matching fragment in the editor.\nThe model and tokenizer are included in the app; no model download is needed after installation. Semantic search is approximate: it may miss relevant entries or return entries on nearby topics.\n\nPROTECTION FOR YOUR ENTRIES\nEntries, drafts and search vectors are stored in an encrypted database on your device. A PIN protects access to the app, with optional biometrics. Automatic locking, protection against ordinary screenshots and hidden content in the recent-apps preview help keep writing private.\nThe app contains no ads, analytics, accounts, cloud sync or INTERNET permission. Entry text is not sent to the developer.\n\nIMPORT, EXPORT AND BACKUPS\nImport individual TXT/Markdown files, export entries as a Markdown ZIP, or create an encrypted backup with your own password. Export starts only when you choose it. Markdown ZIP files are plain text; a system file provider you select may be a cloud service.\n\nThe app is purchased through the store before installation. There are no subscriptions or in-app purchases; its features work without a network connection.\n\nPlease note: the PIN and backup password cannot be recovered. Drafts and trash are excluded from exports. The local model needs available storage and memory; speed depends on your device.\n\nAndroid 8.0 or later. English and Russian interface, with light and dark themes.",
+  "shortDescription": "Encrypted diary with offline search. Pro adds ad-free use and local statistics.",
+  "fullDescription": "Keep thoughts, events and memories on your own device. The search model is bundled in the app. Writing, word and semantic search, locking, import and backups are free and work offline.\n\nA PLACE TO WRITE\n• Entries with dates, times, optional moods and tags.\n• A calm editor with large text and an expandable Details menu.\n• Automatic draft saving with cursor recovery.\n• Calendar, favorites and On this day memories.\n• A 30-day trash folder and optional local reminders.\n\nSEARCH ON YOUR DEVICE\nFind words and fragments inside words, tags, or related meanings in English and Russian. Filter by dates, mood and tags, then open a matching fragment in the editor.\nSemantic search is approximate and may miss relevant entries or return nearby topics. No cloud processing or in-app model download is used.\n\nPROTECTED WRITING\nEntries, drafts and search vectors are stored in an encrypted database. Access is protected by a PIN and optional biometrics, with automatic locking and protection against ordinary screenshots and recent-app previews.\nEntry text, moods, tags, vectors and search queries are not sent to the ad service, payment server or developer. There is no cloud sync.\n\nFREE AND PRO\nInstallation is free. The free version offers Yandex ads when you choose to watch after a data explanation. Viewing requires internet and sends an IP address and technical device data; the SDK uses technical telemetry. Declining, an ad error or no connection does not block your diary.\nPro costs RUB 99 per calendar month and removes ads while adding on-device mood, tag and writing statistics. Statistics summarize selected marks and do not make medical assessments.\nEach month of access is purchased separately through SBP in a YooKassa payment form, independently of the store payment service. Renewal is manual with no automatic debits. Payment, status checking and Pro recovery require a connection; confirmed access works offline until its stated expiry. Core features remain free after expiry.\n\nIMPORT AND BACKUPS\nImport TXT/Markdown, export a Markdown ZIP, or create a password-protected encrypted backup. Markdown is plain text; a system file provider you choose may be a cloud service. Export starts only when you choose it.\n\nThe PIN and backup password cannot be recovered. Drafts and trash are excluded from backups. The local model needs available storage and memory; speed depends on your device.\n\nAndroid 8.0 or later. English and Russian, with light and dark themes.",
   "monetization": {
-    "type": "paid_download",
+    "type": "free_with_ads_and_pro",
     "currency": "RUB",
-    "price": null,
-    "ads": false,
-    "inAppPurchases": false,
+    "price": 0,
+    "ads": true,
+    "inAppPurchases": true,
     "subscriptions": false,
-    "proposedPrice": 199,
-    "priceConfirmed": false,
-    "sellerStatus": "eligible_seller_not_confirmed",
-    "merchantEligible": false
+    "paymentProvider": "YooKassa",
+    "paymentMethod": "sbp",
+    "proPrice": 99,
+    "proPeriod": "P1M",
+    "renewal": "manual",
+    "automaticDebits": false
   },
   "publisher": {
     "legalName": null,
     "supportEmail": "gr1val@yandex.ru",
-    "privacyPolicyUrl": "https://wa11en.github.io/pet-1/privacy/",
+    "privacyPolicyUrl": "https://wa11en.github.io/pet-1/privacy/store/",
     "displayName": "Private Diary"
   },
   "blockingFields": [
     "publisher.legalName",
     "publisher.privacyPolicyUrl",
-    "monetization.price",
-    "monetization.priceConfirmed",
-    "eligibleSellerAccount",
+    "developerAccountVerified",
+    "productionPaymentBackend",
+    "yookassaAccountSbpReceipts",
+    "productionAdUnit",
+    "thirdPartyPaymentDeclared",
     "storeAgeClassification",
     "releaseSigningKey",
     "storeReviewAccess"
   ],
-  "notes": "Draft for owner review. RUB 199 is proposed and unconfirmed. The eligible seller account and legal name are unconfirmed; do not submit until all blocking fields are complete."
+  "notes": "Draft free RuStore listing. Pro costs RUB 99/month, manually renewed through SBP without automatic debits. Production ads and payments are not configured. Confirm YooKassa onboarding for the self-employed owner, SBP/receipts, third-party payment and ad disclosures, public policy, signing and store materials before submission."
 }

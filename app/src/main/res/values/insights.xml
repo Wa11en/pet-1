@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="insights_title">Your diary in numbers</string>
+    <string name="insights_summary">Local mood, tag and writing statistics</string>
+    <string name="insights_privacy">Calculated on this device from entry dates, selected moods and tags.</string>
+    <string name="insights_loading">Calculating your statistics…</string>
+    <string name="insights_empty_title">Your story starts here</string>
+    <string name="insights_empty_description">Add an entry to see your writing days, moods and tags here.</string>
+    <string name="insights_month">This month · %1$s</string>
+    <string name="insights_entries_month">Entries this month</string>
+    <string name="insights_writing_days">Days with entries</string>
+    <string name="insights_writing_days_value">%1$d of %2$d</string>
+    <string name="insights_all_entries">Entries in your diary: %1$d</string>
+    <string name="insights_mood_average">Average selected mood</string>
+    <string name="insights_mood_value">%1$s / 5</string>
+    <string name="insights_mood_missing">No mood recorded</string>
+    <string name="insights_mood_explanation">Only entries with a selected mood are included in the average.</string>
+    <string name="insights_regularity">Writing rhythm</string>
+    <string name="insights_current_streak">Current streak</string>
+    <string name="insights_longest_streak">Longest streak</string>
+    <plurals name="insights_streak_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="insights_streak_explanation">Consecutive days with entries. Yesterday’s streak continues while you still have today to write.</string>
+    <string name="insights_last_thirty_days">Mood over the last 30 days</string>
+    <string name="insights_chart_scale">Selected mood from 1 to 5. A dash means no mood was recorded.</string>
+    <string name="insights_chart_day">%1$s: %2$s</string>
+    <string name="insights_chart_description">Daily average selected moods. %1$s</string>
+    <string name="insights_four_weeks">Four weeks at a glance</string>
+    <string name="insights_week_range">%1$s – %2$s</string>
+    <plurals name="insights_week_entries">
+        <item quantity="one">%d entry</item>
+        <item quantity="other">%d entries</item>
+    </plurals>
+    <string name="insights_tags">Frequent tags</string>
+    <string name="insights_tags_period">Last 30 days · a tag is counted once per entry</string>
+    <string name="insights_tags_empty">Add tags in an entry’s extra options to see them here.</string>
+    <plurals name="insights_tag_count">
+        <item quantity="one">%d entry</item>
+        <item quantity="other">%d entries</item>
+    </plurals>
+    <string name="insights_dates_note">Statistics include entries dated today or earlier. Each day follows your device’s time zone.</string>
+</resources>

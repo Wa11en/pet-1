@@ -4,6 +4,8 @@ import ru.privatediary.ui.screens.DiaryScreens
 import ru.privatediary.ui.DiaryActions
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.content.pm.PackageManager
 import android.view.WindowManager
@@ -18,6 +20,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
+import ru.privatediary.monetization.ads.AdsRuntime
 import ru.privatediary.ui.*
 import ru.privatediary.ui.theme.DiaryTheme
 
@@ -58,6 +62,15 @@ class MainActivity : AppCompatActivity() {
         setContent {
             DiaryTheme {
                 val state = vm.state.collectAsStateWithLifecycle().value
+                LaunchedEffect(vm) {
+                    vm.paymentUrls.collect { url ->
+                        if (vm.state.value.unlocked && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) &&
+                            ru.privatediary.monetization.PaymentUrlPolicy.isAllowed(url)) {
+                            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                .onFailure { vm.notify(R.string.pro_payment_error) }
+                        }
+                    }
+                }
                 DiaryScreens(state, DiaryActions(
                     onCreatePin = vm::createPin, onUnlock = vm::unlock, onBiometric = ::authenticate,
                     onSaveEntry = vm::save, onDeleteEntry = vm::delete,
@@ -80,6 +93,14 @@ class MainActivity : AppCompatActivity() {
                     onDailyReminderChanged = { setReminder("daily", it) },
                     onBackupReminderChanged = { setReminder("backup", it) },
                     onReminderTimeChanged = vm::reminderTimeChanged,
+                    onPay = vm::pay, onCheckPayment = vm::checkPayment, onRestorePro = vm::restorePro,
+                    onRevealRecoveryCode = vm::revealRecoveryCode, onClosePro = vm::closePro,
+                    onShowAd = {
+                        val access = vm.state.value.pro.activeUntilMillis
+                        if (vm.state.value.unlocked && (access == null || access <= System.currentTimeMillis())) {
+                            if (!AdsRuntime.show(this)) vm.notify(R.string.ads_not_configured)
+                        }
+                    },
                 ))
             }
         }
@@ -109,5 +130,5 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButtonText(getString(R.string.enter_pin)).build())
     }
     override fun onStart() { graph.lock.onForeground(); super.onStart(); graph.reminders.reschedule() }
-    override fun onStop() { vm.flushDraft(); if (!isChangingConfigurations) graph.lock.onBackground(); super.onStop() }
+    override fun onStop() { vm.stopPaymentRequests(); vm.flushDraft(); if (!isChangingConfigurations) graph.lock.onBackground(); super.onStop() }
 }

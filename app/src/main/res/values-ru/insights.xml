@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="insights_title">Дневник в цифрах</string>
+    <string name="insights_summary">Настроение, теги и регулярность записей — на устройстве</string>
+    <string name="insights_privacy">Расчёт на этом устройстве по датам записей, выбранному настроению и тегам.</string>
+    <string name="insights_loading">Считаем вашу статистику…</string>
+    <string name="insights_empty_title">Ваша история начинается здесь</string>
+    <string name="insights_empty_description">Добавьте запись, чтобы увидеть дни с записями, настроение и теги.</string>
+    <string name="insights_month">Этот месяц · %1$s</string>
+    <string name="insights_entries_month">Записей за месяц</string>
+    <string name="insights_writing_days">Дней с записями</string>
+    <string name="insights_writing_days_value">%1$d из %2$d</string>
+    <string name="insights_all_entries">Всего записей в дневнике: %1$d</string>
+    <string name="insights_mood_average">Среднее выбранное настроение</string>
+    <string name="insights_mood_value">%1$s / 5</string>
+    <string name="insights_mood_missing">Настроение не указано</string>
+    <string name="insights_mood_explanation">В среднем учитываются только записи с выбранным настроением.</string>
+    <string name="insights_regularity">Ритм записей</string>
+    <string name="insights_current_streak">Текущая серия</string>
+    <string name="insights_longest_streak">Самая длинная</string>
+    <plurals name="insights_streak_days">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дня</item>
+    </plurals>
+    <string name="insights_streak_explanation">Дни с записями подряд. Вчерашняя серия сохраняется, пока у вас есть сегодняшний день для новой записи.</string>
+    <string name="insights_last_thirty_days">Настроение за 30 дней</string>
+    <string name="insights_chart_scale">Выбранное настроение от 1 до 5. Чёрточка означает, что настроение не указано.</string>
+    <string name="insights_chart_day">%1$s: %2$s</string>
+    <string name="insights_chart_description">Среднее выбранное настроение по дням. %1$s</string>
+    <string name="insights_four_weeks">Четыре недели в обзоре</string>
+    <string name="insights_week_range">%1$s — %2$s</string>
+    <plurals name="insights_week_entries">
+        <item quantity="one">%d запись</item>
+        <item quantity="few">%d записи</item>
+        <item quantity="many">%d записей</item>
+        <item quantity="other">%d записи</item>
+    </plurals>
+    <string name="insights_tags">Частые теги</string>
+    <string name="insights_tags_period">За 30 дней · тег учитывается один раз в записи</string>
+    <string name="insights_tags_empty">Добавляйте теги в дополнительных настройках записи — они появятся здесь.</string>
+    <plurals name="insights_tag_count">
+        <item quantity="one">%d запись</item>
+        <item quantity="few">%d записи</item>
+        <item quantity="many">%d записей</item>
+        <item quantity="other">%d записи</item>
+    </plurals>
+    <string name="insights_dates_note">Учитываются записи с датой не позднее сегодняшней. Дни определяются по часовому поясу устройства.</string>
+</resources>

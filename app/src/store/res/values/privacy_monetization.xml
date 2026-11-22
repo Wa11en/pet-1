@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="privacy_intro">Your diary is encrypted on this device and works offline. Only ads you choose to view and Pro payment actions use the internet.</string>
+    <string name="privacy_detail">Entries and meaning search stay on this device. The store edition uses the internet for ads after your confirmation and for Pro payment or restoration. These requests do not include diary text. Ad and payment providers receive technical data; read the privacy policy for details.</string>
+    <string name="auth_privacy_note">Your diary is encrypted and works offline. Ad viewing and Pro payments use the internet after your action.</string>
+    <string name="settings_privacy_summary">Entries are encrypted and processed on this device.</string>
+    <string name="settings_privacy_caption">Offline diary. Optional online ads and payments.</string>
+    <string name="privacy_title">Protecting your entries</string>
+    <string name="design_private_badge">ENTRIES STAY ON YOUR DEVICE</string>
+    <string name="app_version_label">Version %1$s · diary works offline</string>
+    <string name="privacy_policy_description">Local diary, ad data and Pro payments</string>
+</resources>

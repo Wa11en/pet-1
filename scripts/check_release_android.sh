@@ -4,14 +4,20 @@ set -euo pipefail
 umask 077
 
 # Developer/CI-only checks with synthetic data. The actual release remains unsigned.
-RELEASE_APK="${1:?Usage: check_release_android.sh UNSIGNED_RELEASE_APK TEST_APK REPORT_DIRECTORY [DEBUG_KEYSTORE]}"
+RELEASE_APK="${1:?Usage: check_release_android.sh UNSIGNED_RELEASE_APK TEST_APK REPORT_DIRECTORY [DEBUG_KEYSTORE] [offline|store]}"
 TEST_APK="${2:?Supply the matching debug instrumentation APK}"
 REPORT_DIRECTORY="${3:?Supply a directory for public verification reports}"
 TEST_KEYSTORE="${4:-${ANDROID_USER_HOME:-$HOME/.android}/debug.keystore}"
+BUILD_FLAVOR="${5:-offline}"
 SDK_DIRECTORY="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 APKSIGNER="$SDK_DIRECTORY/build-tools/35.0.0/apksigner"
 TEST_RUNNER='ru.privatediary.test/androidx.test.runner.AndroidJUnitRunner'
 SCREENSHOTS_CLASS='ru.privatediary.store.StoreScreenshotsTest'
+
+if [[ $# -gt 5 || "$BUILD_FLAVOR" != offline && "$BUILD_FLAVOR" != store ]]; then
+    echo 'Choose the tested variant: offline or store.' >&2
+    exit 2
+fi
 
 for setting in DIARY_RELEASE_STORE_FILE DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_ALIAS DIARY_RELEASE_KEY_PASSWORD; do
     if [[ -v "$setting" ]]; then
@@ -19,9 +25,12 @@ for setting in DIARY_RELEASE_STORE_FILE DIARY_RELEASE_STORE_PASSWORD DIARY_RELEA
         exit 1
     fi
 done
-for input in "$RELEASE_APK" "$TEST_APK" "$TEST_KEYSTORE"; do
-    [[ -f "$input" ]] || { echo 'A required runtime-verification input is missing.' >&2; exit 1; }
-done
+[[ -f "$RELEASE_APK" ]] || { printf 'Unsigned release APK is missing: %s\n' "$RELEASE_APK" >&2; exit 1; }
+[[ -f "$TEST_APK" ]] || { printf 'Matching instrumentation APK is missing: %s\n' "$TEST_APK" >&2; exit 1; }
+[[ -f "$TEST_KEYSTORE" ]] || {
+    printf 'CI debug keystore is missing: %s\nCreate the key in ANDROID_USER_HOME before Gradle builds the matching test APK.\n' "$TEST_KEYSTORE" >&2
+    exit 1
+}
 [[ -x "$APKSIGNER" ]] || { echo 'Android build-tools 35.0.0 are required.' >&2; exit 1; }
 if "$APKSIGNER" verify "$RELEASE_APK" >/dev/null 2>&1; then
     echo 'This check requires an explicitly unsigned release candidate.' >&2
@@ -67,12 +76,12 @@ fi
     echo 'The unsigned release candidate changed during runtime verification.' >&2
     exit 1
 }
-python3 - "$REPORT_DIRECTORY/runtime-summary.json" "$original_sha256" "${counts[0]}" <<'PY'
+python3 - "$REPORT_DIRECTORY/runtime-summary.json" "$original_sha256" "${counts[0]}" "$BUILD_FLAVOR" <<'PY'
 import json
 from pathlib import Path
 import sys
 Path(sys.argv[1]).write_text(json.dumps({
-    "testedVariant": "release",
+    "testedVariant": sys.argv[4] + "Release",
     "testsPassed": int(sys.argv[3]),
     "debuggable": False,
     "screenshotsExcluded": True,

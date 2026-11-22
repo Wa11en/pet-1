@@ -42,7 +42,8 @@ import ru.privatediary.ui.DiaryActions
 import ru.privatediary.ui.DiaryUiState
 
 @Composable
-internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTrash: () -> Unit, onPrivacy: () -> Unit) {
+internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTrash: () -> Unit, onPrivacy: () -> Unit,
+    onPro: () -> Unit, onInsights: () -> Unit) {
     var passwordAction by remember { mutableStateOf<String?>(null) }
     var exportWarning by remember { mutableStateOf(false) }
     val enabled = !state.busy
@@ -56,6 +57,31 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTr
             Icon(Icons.Outlined.Shield, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.privacy_policy_title))
+        }
+        if (ru.privatediary.BuildConfig.NETWORK_FEATURES) {
+            val proActive = state.pro.activeUntilMillis?.let { it > System.currentTimeMillis() } == true
+            OutlinedCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.pro_title), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(if (proActive) R.string.pro_settings_active else R.string.pro_settings_summary),
+                        style = MaterialTheme.typography.bodyMedium)
+                    Button(onClick = onPro, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(if (proActive) R.string.pro_manage else R.string.pro_details))
+                    }
+                    OutlinedButton(onClick = onInsights, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.insights_title))
+                    }
+                    if (!proActive) {
+                        Text(stringResource(R.string.ads_explicit_notice), style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = actions.onShowAd,
+                            enabled = ru.privatediary.monetization.ads.AdsRuntime.isConfigured(),
+                            modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.ads_watch)) }
+                        if (!ru.privatediary.monetization.ads.AdsRuntime.isConfigured()) {
+                            Text(stringResource(R.string.ads_not_configured), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
         }
 
         SettingsGroup(R.string.settings_security_section) {

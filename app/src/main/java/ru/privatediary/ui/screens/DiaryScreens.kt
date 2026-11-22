@@ -96,6 +96,10 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions, onPrivac
     val searchListState = rememberLazyListState()
     LaunchedEffect(state.query, state.searchFilters) { searchListState.scrollToItem(0) }
     var showTrash by remember { mutableStateOf(false) }
+    var showPro by remember { mutableStateOf(false) }
+    var showInsights by remember { mutableStateOf(false) }
+    val proActive = state.pro.activeUntilMillis?.let { it > System.currentTimeMillis() } == true
+    LaunchedEffect(proActive) { if (!proActive) showInsights = false }
     val snackbar = remember { SnackbarHostState() }
     val movedMessage = stringResource(R.string.trash_moved)
     val undoLabel = stringResource(R.string.trash_undo)
@@ -125,6 +129,14 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions, onPrivac
             onClose = actions.onCloseEditor, onSave = actions.onSaveEntry, onDelete = { deleteEntry = editing },
             onDraftChanged = actions.onDraftChanged, onDiscardDraft = actions.onDiscardDraft,
             focusSearchMatch = state.editorFocusMatch, onToggleFavorite = { actions.onToggleFavorite(editing.id) })
+    } else if (showPro) {
+        val close = { actions.onClosePro(); showPro = false }
+        BackHandler(onBack = close)
+        ProScreen(state.pro, onPay = actions.onPay, onCheckPayment = actions.onCheckPayment,
+            onRestore = actions.onRestorePro, onRevealRecoveryCode = actions.onRevealRecoveryCode, onBack = close)
+    } else if (showInsights && proActive) {
+        BackHandler { showInsights = false }
+        InsightsScreen(state.entries, onBack = { showInsights = false })
     } else if (showTrash) {
         TrashScreen(state.trash, state.busy, onBack = { showTrash = false },
             onRestore = actions.onRestoreEntry, onDeleteForever = actions.onDeleteForever)
@@ -151,7 +163,8 @@ private fun UnlockedScreens(state: DiaryUiState, actions: DiaryActions, onPrivac
                             ?: Entry(timestamp = savedDraft.timestamp, text = ""))
                     }
                     Page.SEARCH -> SearchScreen(state, actions, searchListState)
-                    Page.SETTINGS -> SettingsScreen(state, actions, onOpenTrash = { showTrash = true }, onPrivacy = onPrivacy)
+                    Page.SETTINGS -> SettingsScreen(state, actions, onOpenTrash = { showTrash = true }, onPrivacy = onPrivacy,
+                        onPro = { showPro = true }, onInsights = { if (proActive) showInsights = true else showPro = true })
                 }
             }
         }

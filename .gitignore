@@ -19,3 +19,5 @@ signing.properties
 .env.*
 release/private/
 release/artifacts/
+backend/.venv/
+backend/private/

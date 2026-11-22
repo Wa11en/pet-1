@@ -23,6 +23,8 @@ import ru.privatediary.security.lock.PinLock
 import ru.privatediary.util.BackupCodec
 import ru.privatediary.util.MarkdownExporter
 import ru.privatediary.util.TextImporter
+import ru.privatediary.monetization.PaymentStatus
+import ru.privatediary.monetization.ProScreenState
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 
@@ -33,6 +35,10 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         dailyReminderEnabled = graph.settings.dailyReminderEnabled, dailyReminderMinutes = graph.settings.dailyReminderMinutes,
         backupReminderEnabled = graph.settings.backupReminderEnabled))
     val state = _state.asStateFlow()
+    private val _paymentUrls = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val paymentUrls = _paymentUrls.asSharedFlow()
+    private var paymentJob: Job? = null
+    private var paymentRevision = 0L
     private var session: DiarySession? = null
     private val indexingRequests = MutableStateFlow(0L)
     private var searchJob: Job? = null
@@ -50,12 +56,14 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.lock.unlocked.collect { unlocked ->
                 if (!unlocked) {
+                    stopPaymentRequests()
                     flushDraft()
                     searchJob?.cancel()
                     _state.update { it.copy(unlocked = false, loading = false, entries = emptyList(),
                         results = emptyList(), searching = false, query = "", errorMessage = null,
                         drafts = emptyList(), editorEntry = null, editorDraft = null, draftSaving = false,
-                        trash = emptyList(), undoEntryId = null, searchFilters = SearchFilters(), editorFocusMatch = false) }
+                        trash = emptyList(), undoEntryId = null, searchFilters = SearchFilters(), editorFocusMatch = false,
+                        pro = ProScreenState()) }
                 }
             }
         }
@@ -73,6 +81,12 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
                         _state.update { it.copy(loading = false, drafts = drafts) }
                         resumeTransfer()
                         coroutineScope {
+                            launch {
+                                while (isActive) {
+                                    refreshProAccess()
+                                    delay(30_000)
+                                }
+                            }
                             launch { opened.repository.observeTrash().collect { trash -> _state.update { it.copy(trash = trash) } } }
                             launch { while (isActive) { delay(60 * 60 * 1000L); opened.repository.purgeExpired() } }
                             launch { opened.repository.observeDrafts().collect { drafts ->
@@ -260,6 +274,96 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     fun notify(id: Int) { _state.update { it.copy(errorMessage = message(id)) } }
     fun lock() { graph.lock.lock() }
 
+    /** All startup/unlock/expiry checks are local; payment requests exist only behind these buttons. */
+    private suspend fun refreshProAccess() {
+        val access = try { graph.proAccess.readAccess() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) {
+            if (graph.lock.unlocked.value) _state.update { it.copy(pro = ProScreenState()) }
+            return
+        }
+        if (!graph.lock.unlocked.value) return
+        _state.update { it.copy(pro = it.pro.copy(
+            paymentsConfigured = graph.payments.isConfigured && graph.proAccess.isVerifierConfigured,
+            activeUntilMillis = access.activeUntilMillis, hasAccount = access.hasAccount,
+            hasPendingCheckout = access.pendingCheckout != null,
+        )) }
+    }
+
+    fun pay() = paymentOperation {
+        val pendingCheckout = graph.proAccess.readAccess().pendingCheckout
+        val checkout = pendingCheckout ?: graph.payments.createCheckout(graph.proAccess.checkoutIdentity())
+            .also { graph.proAccess.saveCheckout(it) }
+        refreshProAccess()
+        if (graph.lock.unlocked.value) _paymentUrls.emit(checkout.paymentUrl)
+    }
+
+    fun checkPayment() = paymentOperation {
+        val checkout = graph.proAccess.readAccess().pendingCheckout ?: return@paymentOperation
+        val result = graph.payments.checkPayment(graph.proAccess.checkoutIdentity(), checkout.checkoutId)
+        val messageId = when (result.status) {
+            PaymentStatus.PENDING -> R.string.pro_status_pending
+            PaymentStatus.CANCELED -> { graph.proAccess.clearPendingCheckout(); R.string.pro_status_canceled }
+            PaymentStatus.PAID -> {
+                val raw = result.entitlement
+                if (raw == null) {
+                    // A completed order may already be expired. Clear only the pending order, never grant access.
+                    graph.proAccess.clearPendingCheckout()
+                    R.string.pro_status_expired
+                } else {
+                    check(graph.proAccess.acceptEntitlement(raw)) { "Invalid signed entitlement" }
+                    R.string.pro_status_activated
+                }
+            }
+        }
+        refreshProAccess()
+        if (graph.lock.unlocked.value) _state.update { it.copy(pro = it.pro.copy(message = message(messageId))) }
+    }
+
+    fun restorePro(code: String) = paymentOperation {
+        val identity = graph.proAccess.restoreIdentity(code)
+        val raw = graph.payments.restore(identity)
+        if (raw == null) {
+            _state.update { it.copy(pro = it.pro.copy(message = message(R.string.pro_restore_not_found))) }
+        } else {
+            check(graph.proAccess.acceptRestoredEntitlement(identity, raw))
+            refreshProAccess()
+            if (graph.lock.unlocked.value) _state.update { it.copy(pro = it.pro.copy(message = message(R.string.pro_status_activated))) }
+        }
+    }
+
+    fun revealRecoveryCode() {
+        if (!graph.lock.unlocked.value) return
+        viewModelScope.launch {
+            val code = runCatching { graph.proAccess.recoveryCode() }.getOrNull()
+            if (graph.lock.unlocked.value) _state.update { it.copy(pro = it.pro.copy(recoveryCode = code)) }
+        }
+    }
+
+    fun closePro() { stopPaymentRequests() }
+
+    fun stopPaymentRequests() {
+        paymentRevision++
+        paymentJob?.cancel()
+        graph.payments.cancelActiveRequests()
+        _state.update { it.copy(pro = it.pro.copy(busy = false, recoveryCode = null)) }
+    }
+
+    private fun paymentOperation(block: suspend () -> Unit) {
+        if (!graph.lock.unlocked.value || _state.value.pro.busy || !_state.value.pro.paymentsConfigured) return
+        val revision = ++paymentRevision
+        _state.update { it.copy(pro = it.pro.copy(busy = true, message = null)) }
+        paymentJob = viewModelScope.launch {
+            try { block() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                if (revision == paymentRevision && graph.lock.unlocked.value) _state.update { it.copy(pro = it.pro.copy(message = message(R.string.pro_payment_error))) }
+            } finally {
+                if (revision == paymentRevision && graph.lock.unlocked.value) _state.update { it.copy(pro = it.pro.copy(busy = false)) }
+            }
+        }
+    }
+
     private fun refreshSearch() {
         val revision = ++searchRevision
         searchJob?.cancel()
@@ -358,7 +462,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
         val config = Configuration(context.resources.configuration).apply { setLocale(Locale.forLanguageTag(tag)) }
         return context.createConfigurationContext(config).getString(id)
     }
-    override fun onCleared() { pending?.password?.fill('\u0000'); super.onCleared() }
+    override fun onCleared() { graph.payments.cancelActiveRequests(); pending?.password?.fill('\u0000'); super.onCleared() }
 }
 
 private fun readLimited(input: java.io.InputStream, limit: Int): ByteArray {

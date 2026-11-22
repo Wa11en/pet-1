@@ -1,4 +1,4 @@
-name: Prepare unsigned offline release candidate
+name: Prepare unsigned release candidates
 
 on:
   workflow_dispatch:
@@ -11,9 +11,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-test.txt
+      - name: Install pinned payment-server test dependencies
+        run: python -m pip install -r backend/requirements-test.txt
+      - name: Test payment verification without merchant keys or network calls
+        env:
+          PYTHONPATH: backend
+        run: python -m unittest discover -s backend/tests -v
   prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flavor: offline
+            gradle-variant: Offline
+          - flavor: store
+            gradle-variant: Store
+    env:
+      # AGP and the runtime signer must use the same disposable runner-owned key.
+      ANDROID_USER_HOME: ${{ runner.temp }}/private-diary-android-user
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -25,6 +56,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Prepare the isolated CI Android debug key
+        run: |
+          mkdir -p "$ANDROID_USER_HOME"
+          keytool -genkeypair -noprompt -storetype JKS -keyalg RSA -keysize 3072 -validity 10000 \
+            -keystore "$ANDROID_USER_HOME/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -dname 'CN=Android Debug,O=Android,C=US'
+          test -s "$ANDROID_USER_HOME/debug.keystore"
       - name: Install compile SDK and build tools
         run: >-
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -34,19 +72,25 @@ jobs:
       - name: Build source and run unit, native-model, lint and manifest checks
         run: |
           unset DIARY_RELEASE_STORE_FILE DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_ALIAS DIARY_RELEASE_KEY_PASSWORD
-          ./gradlew assembleDebug assembleDebugAndroidTest assembleRelease bundleRelease testDebugUnitTest lintDebug checkDebugNoInternet checkReleaseNoInternet \
+          ./gradlew assemble${{ matrix.gradle-variant }}Debug assemble${{ matrix.gradle-variant }}DebugAndroidTest \
+            assemble${{ matrix.gradle-variant }}Release bundle${{ matrix.gradle-variant }}Release \
+            test${{ matrix.gradle-variant }}DebugUnitTest lint${{ matrix.gradle-variant }}Release \
+            check${{ matrix.gradle-variant }}DebugNoInternet check${{ matrix.gradle-variant }}ReleaseNoInternet \
             -PunsignedReleaseCandidate=true -PrequireModel=true -PverifyOfflineModel=true --max-workers=2 --console=plain
       - name: Check privacy documents and release-verifier regressions
         run: |
           python3 scripts/test_render_privacy.py
           python3 scripts/render_privacy.py --check
+          python3 scripts/render_privacy.py --variant store --check
           python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
       - name: Verify exact unsigned APK and AAB
         run: |
-          python3 scripts/verify_release.py app/build/outputs/apk/release/app-release-unsigned.apk \
-            --allow-unsigned-candidate --report app/build/outputs/apk/release/verification-candidate.json
-          python3 scripts/verify_release.py app/build/outputs/bundle/release/app-release.aab \
-            --allow-unsigned-candidate --report app/build/outputs/bundle/release/verification-candidate.json
+          python3 scripts/verify_release.py app/build/outputs/apk/${{ matrix.flavor }}/release/app-${{ matrix.flavor }}-release-unsigned.apk \
+            --variant ${{ matrix.flavor }} --allow-unsigned-candidate \
+            --report app/build/outputs/apk/${{ matrix.flavor }}/release/verification-candidate.json
+          python3 scripts/verify_release.py app/build/outputs/bundle/${{ matrix.flavor }}Release/app-${{ matrix.flavor }}-release.aab \
+            --variant ${{ matrix.flavor }} --allow-unsigned-candidate \
+            --report app/build/outputs/bundle/${{ matrix.flavor }}Release/verification-candidate.json
       - name: Enable emulator hardware acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -61,26 +105,26 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -memory 2048
           script: |
-            bash scripts/check_release_android.sh app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk release/artifacts/android-runtime "$HOME/.android/debug.keystore"
-            bash scripts/check_store_screenshots.sh app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk release/store/screenshots
+            bash scripts/check_release_android.sh app/build/outputs/apk/${{ matrix.flavor }}/release/app-${{ matrix.flavor }}-release-unsigned.apk app/build/outputs/apk/androidTest/${{ matrix.flavor }}/debug/app-${{ matrix.flavor }}-debug-androidTest.apk release/artifacts/android-runtime "$ANDROID_USER_HOME/debug.keystore" ${{ matrix.flavor }}
+            bash scripts/check_store_screenshots.sh app/build/outputs/apk/${{ matrix.flavor }}/debug/app-${{ matrix.flavor }}-debug.apk app/build/outputs/apk/androidTest/${{ matrix.flavor }}/debug/app-${{ matrix.flavor }}-debug-androidTest.apk release/store/screenshots ${{ matrix.flavor }}
       - name: Report remaining release and seller requirements
         run: >-
           python3 scripts/check_release_readiness.py --report-only
           --report release/artifacts/readiness.json
-          --apk-report app/build/outputs/apk/release/verification-candidate.json
-          --aab-report app/build/outputs/bundle/release/verification-candidate.json
+          --apk-report app/build/outputs/apk/${{ matrix.flavor }}/release/verification-candidate.json
+          --aab-report app/build/outputs/bundle/${{ matrix.flavor }}Release/verification-candidate.json
       - name: Save public verification reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: private-diary-verification-${{ github.run_number }}
+          name: private-diary-${{ matrix.flavor }}-verification-${{ github.run_number }}
           retention-days: 14
           if-no-files-found: warn
           path: |
-            app/build/outputs/apk/release/verification-candidate.json
-            app/build/outputs/bundle/release/verification-candidate.json
-            app/build/reports/lint-results-debug.html
-            app/build/test-results/testDebugUnitTest/*.xml
+            app/build/outputs/apk/${{ matrix.flavor }}/release/verification-candidate.json
+            app/build/outputs/bundle/${{ matrix.flavor }}Release/verification-candidate.json
+            app/build/reports/lint-results-${{ matrix.flavor }}Release.html
+            app/build/test-results/test${{ matrix.gradle-variant }}DebugUnitTest/*.xml
             release/artifacts/readiness.json
             release/artifacts/android-runtime/core-tests.txt
             release/artifacts/android-runtime/release-not-debuggable.txt
@@ -89,21 +133,21 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: private-diary-synthetic-screens-${{ github.run_number }}
+          name: private-diary-${{ matrix.flavor }}-synthetic-screens-${{ github.run_number }}
           retention-days: 14
           if-no-files-found: warn
           path: |
             release/store/screenshots/*.png
-            ${{ runner.temp }}/private-diary-store-capture/instrumentation.txt
+            ${{ runner.temp }}/private-diary-store-capture-${{ matrix.flavor }}/instrumentation.txt
       - name: Save unsigned review artifacts and public store materials
         uses: actions/upload-artifact@v4
         with:
-          name: private-diary-unsigned-review-${{ github.run_number }}
+          name: private-diary-${{ matrix.flavor }}-unsigned-review-${{ github.run_number }}
           retention-days: 14
           if-no-files-found: error
           path: |
-            app/build/outputs/apk/release/app-release-unsigned.apk
-            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/apk/${{ matrix.flavor }}/release/app-${{ matrix.flavor }}-release-unsigned.apk
+            app/build/outputs/bundle/${{ matrix.flavor }}Release/app-${{ matrix.flavor }}-release.aab
             release/store/screenshots/*.png
             release/store/metadata-ru.json
             release/store/metadata-en.json
@@ -114,6 +158,9 @@ jobs:
             app/src/main/assets/privacy/policy.json
             docs/privacy/index.html
             docs/privacy/en.html
+            app/src/store/assets/privacy/policy.json
+            docs/privacy/store/index.html
+            docs/privacy/store/en.html
             release/REVIEWER.md
             release/RUSTORE.md
             release/SIGNING.md

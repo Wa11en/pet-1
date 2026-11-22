@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_status_pending">Платёж ещё не подтверждён. После оплаты проверьте снова.</string>
+    <string name="pro_status_canceled">Платёж отменён. Деньги за новый месяц не списаны.</string>
+    <string name="pro_status_activated">Pro включён. Оплаченный доступ работает офлайн.</string>
+    <string name="pro_status_expired">Оплата завершена, но оплаченный срок уже истёк. Можно добавить новый месяц.</string>
+    <string name="pro_restore_not_found">Действующий доступ для этого кода не найден.</string>
+    <string name="pro_payment_error">Не удалось подтвердить оплату. Проверьте соединение и повторите. Дневник доступен офлайн.</string>
+    <string name="pro_settings_active">Ваш ритм и отключение рекламы включены. Продление вручную, без автоматических списаний.</string>
+    <string name="pro_settings_summary">Без рекламы и со статистикой настроения, тегов и регулярности — 99 ₽ за месяц.</string>
+    <string name="pro_manage">Управлять Pro</string>
+    <string name="pro_details">Подробнее о Pro</string>
+    <string name="ads_explicit_notice">Реклама загружается только по кнопке и после вашего согласия. Рекламный сервис получает технические данные устройства и соединения, без текста дневника.</string>
+    <string name="ads_watch">Посмотреть рекламу</string>
+    <string name="ads_not_configured">Реклама в этой сборке ещё не настроена.</string>
+</resources>

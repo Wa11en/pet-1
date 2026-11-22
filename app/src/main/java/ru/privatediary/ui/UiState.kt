@@ -5,6 +5,7 @@ import ru.privatediary.domain.models.EditorDraft
 import ru.privatediary.domain.models.TrashedEntry
 import ru.privatediary.domain.models.SearchFilters
 import ru.privatediary.domain.models.SearchResult
+import ru.privatediary.monetization.ProScreenState
 
 enum class SearchMode { WORDS, MEANING }
 
@@ -39,6 +40,7 @@ data class DiaryUiState(
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderMinutes: Int = 20 * 60,
     val backupReminderEnabled: Boolean = false,
+    val pro: ProScreenState = ProScreenState(),
 )
 
 data class DiaryActions(
@@ -71,4 +73,10 @@ data class DiaryActions(
     val onDailyReminderChanged: (Boolean) -> Unit,
     val onReminderTimeChanged: (Int) -> Unit,
     val onBackupReminderChanged: (Boolean) -> Unit,
+    val onPay: () -> Unit = {},
+    val onCheckPayment: () -> Unit = {},
+    val onRestorePro: (String) -> Unit = {},
+    val onRevealRecoveryCode: () -> Unit = {},
+    val onClosePro: () -> Unit = {},
+    val onShowAd: () -> Unit = {},
 )

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Store monetization is opt in; offline flavor never includes this manifest or SDK. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Neither advertising ID nor installed-app discovery is needed for this placement. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove" />
+    <queries tools:node="remove" />
+    <application>
+        <meta-data android:name="com.yandex.mobile.ads.AUTOMATIC_SDK_INITIALIZATION" android:value="false" />
+        <activity android:name=".monetization.ads.StoreAdActivity"
+            android:process=":ads" android:exported="false" android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.ads" android:launchMode="singleTask"
+            android:enableOnBackInvokedCallback="false"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|density" />
+        <activity android:name="com.yandex.mobile.ads.common.AdActivity"
+            android:process=":ads" android:exported="false" android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.ads" />
+        <provider android:name="com.yandex.mobile.ads.core.initializer.YandexAdsInitializeProvider"
+            android:process=":ads" android:enabled="false" android:exported="false" />
+        <provider android:name="io.appmetrica.analytics.internal.PreloadInfoContentProvider"
+            android:process=":ads" android:enabled="false" android:exported="false"
+            tools:replace="android:enabled,android:exported" />
+        <service android:name="io.appmetrica.analytics.internal.AppMetricaService"
+            android:process=":ads" android:exported="false" />
+        <activity android:name="com.yandex.mobile.ads.features.debugpanel.ui.IntegrationInspectorActivity"
+            android:process=":ads" android:enabled="false" android:exported="false" />
+        <provider android:name="com.yandex.mobile.ads.features.debugpanel.data.local.DebugPanelFileProvider"
+            android:process=":ads" android:enabled="false" android:exported="false" />
+        <!-- App Set ID's transitive Play Services resolution UI has no role in a diary/ad flow. -->
+        <activity android:name="com.google.android.gms.common.api.GoogleApiActivity"
+            android:process=":ads" android:enabled="false" android:exported="false" />
+    </application>
+</manifest>

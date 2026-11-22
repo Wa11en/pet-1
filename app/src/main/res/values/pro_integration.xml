@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_status_pending">Payment is pending. Check again after completing payment.</string>
+    <string name="pro_status_canceled">Payment canceled. No new month was charged.</string>
+    <string name="pro_status_activated">Pro is active. Your paid access works offline.</string>
+    <string name="pro_status_expired">Payment completed, but its access period has expired. You can add a new month.</string>
+    <string name="pro_restore_not_found">No active access was found for this code.</string>
+    <string name="pro_payment_error">Payment could not be verified. Check your connection and try again. Your diary remains available offline.</string>
+    <string name="pro_settings_active">Your rhythm and ad-free access are active. Renew manually, with no automatic charges.</string>
+    <string name="pro_settings_summary">No ads, plus mood, tag and writing statistics — 99 RUB per month.</string>
+    <string name="pro_manage">Manage Pro</string>
+    <string name="pro_details">Explore Pro</string>
+    <string name="ads_explicit_notice">Ads load only when you press the button and consent. The ad provider receives technical device and connection data, without diary text.</string>
+    <string name="ads_watch">Watch an ad</string>
+    <string name="ads_not_configured">Advertising is not configured in this build yet.</string>
+</resources>

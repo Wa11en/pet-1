@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_title">Private Diary Pro</string>
+    <string name="pro_back">Назад</string>
+    <string name="pro_headline">Чуть больше пространства для себя</string>
+    <string name="pro_price">99 ₽ за один месяц</string>
+    <string name="pro_manual_terms">Оплата через СБП за один календарный месяц. Продлевайте вручную, когда захотите. Автоматических списаний нет.</string>
+    <string name="pro_active_until">Pro действует до %1$s</string>
+    <string name="pro_no_ads">Без рекламы</string>
+    <string name="pro_no_ads_description">Пишите и перечитывайте дневник без рекламных объявлений.</string>
+    <string name="pro_insights">Ваш ритм</string>
+    <string name="pro_insights_description">Статистика записей, настроения и тегов. Все расчёты выполняются только на телефоне.</string>
+    <string name="pro_core_free">Записи, офлайн-поиск, шифрование, экспорт и резервные копии остаются бесплатными. Дневник доступен и после окончания Pro.</string>
+    <string name="pro_network_notice">Интернет нужен только для рекламы и действий с оплатой. При оплате передаются случайный идентификатор установки и код восстановления, без содержимого дневника.</string>
+    <string name="pro_payments_unavailable">Оплата в этой сборке ещё не настроена. Дневник работает офлайн как обычно.</string>
+    <string name="pro_pay">Оплатить 99 ₽ через СБП</string>
+    <string name="pro_renew">Добавить месяц · 99 ₽</string>
+    <string name="pro_check_payment">Проверить оплату</string>
+    <string name="pro_check_payment_hint">После оплаты вернитесь сюда и нажмите «Проверить оплату». Доступ включится после защищённого подтверждения.</string>
+    <string name="pro_show_recovery">Показать код восстановления</string>
+    <string name="pro_restore">Восстановить доступ на этом телефоне</string>
+    <string name="pro_restore_hint">Введите код, сохранённый на предыдущем телефоне. Для восстановления нужен интернет. Записи дневника при этом не переносятся.</string>
+    <string name="pro_recovery_code">Код восстановления</string>
+    <string name="pro_restore_submit">Восстановить Pro</string>
+    <string name="pro_recovery_warning">Сохраните код в надёжном месте. Он восстанавливает оплаченный доступ после переустановки или смены телефона. Любой, у кого есть код, может им воспользоваться. Это не резервная копия дневника.</string>
+    <string name="pro_copy_code">Скопировать код</string>
+    <string name="pro_close">Закрыть</string>
+</resources>

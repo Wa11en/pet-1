@@ -1,6 +1,6 @@
 # Подпись релиза владельцем приложения
 
-В репозитории нет production-ключа и паролей. Подготовленный unsigned-кандидат позволяет проверить код, модель, манифест и оформление, но **не является готовым файлом для отправки в магазин**. Платный релиз также требует подходящего аккаунта продавца и завершённых реквизитов: см. [RUSTORE.md](RUSTORE.md).
+В репозитории нет production-ключа и паролей. Подготовленный unsigned-кандидат позволяет проверить код, модель, манифест и оформление, но **не является готовым файлом для отправки в магазин**. Бесплатный выпуск с рекламой и отдельной оплатой Pro требует подключения провайдеров и завершённых реквизитов: см. [RUSTORE.md](RUSTORE.md).
 
 ## 1. Создать ключ на своём компьютере
 
@@ -32,7 +32,7 @@ printf '\n'
 read -r -s -p 'Пароль ключа: ' DIARY_RELEASE_KEY_PASSWORD
 printf '\n'
 export DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_PASSWORD
-bash scripts/build_release.sh
+bash scripts/build_release.sh store
 unset DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_PASSWORD
 ```
 
@@ -40,8 +40,8 @@ unset DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_PASSWORD
 
 Выходные файлы:
 
-- `app/build/outputs/apk/release/app-release.apk` — подписанный APK для магазина, поддерживающего этот формат.
-- `app/build/outputs/bundle/release/app-release.aab` — подписанный Android App Bundle для Google Play и магазинов, принимающих AAB.
+- `app/build/outputs/apk/store/release/app-store-release.apk` — подписанный APK для RuStore.
+- `app/build/outputs/bundle/storeRelease/app-store-release.aab` — подписанный Android App Bundle для магазинов, принимающих AAB.
 - `verification-release.json` в обеих папках — отчёт о технических проверках и SHA-256.
 
 Ключ загрузки AAB и ключ, которым Google подписывает установочные APK при Play App Signing, могут различаться. Это отдельно настраивается владельцем в Play Console. Используйте реальный app-signing certificate магазина, когда планируете обновление между каналами.
@@ -49,7 +49,9 @@ unset DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_PASSWORD
 ## 3. Проверить подготовленный кандидат без секретов
 
 ```sh
-bash scripts/build_release.sh --unsigned-candidate
+bash scripts/build_release.sh store --unsigned-candidate
+# Отдельная сборка без INTERNET и рекламных SDK:
+bash scripts/build_release.sh offline --unsigned-candidate
 ```
 
 Эта команда явно убирает signing-переменные из своего окружения и собирает unsigned APK/AAB. В отчёте будут `candidateOnly: true` и `signature.verified: false`; это ожидаемо. Загрузить такой файл как завершённый релиз нельзя. Обычная `assembleRelease`/`bundleRelease` без четырёх настроек подписи останавливается.
@@ -57,12 +59,12 @@ bash scripts/build_release.sh --unsigned-candidate
 ## Проверки артефакта
 
 ```sh
-python3 scripts/verify_release.py app/build/outputs/apk/release/app-release.apk
-python3 scripts/verify_release.py app/build/outputs/bundle/release/app-release.aab
+python3 scripts/verify_release.py app/build/outputs/apk/store/release/app-store-release.apk --variant store
+python3 scripts/verify_release.py app/build/outputs/bundle/storeRelease/app-store-release.aab --variant store
 python3 -m unittest discover -s scripts/tests -p 'test_verify_release.py'
 ```
 
-Проверяется точный файл: подпись, запрет Android Debug certificate, отсутствие `debuggable`, `testOnly`, instrumentation/preview activity и INTERNET; SHA-256 модели и словаря; известные сигнатуры рекламных, аналитических и сетевых SDK; выравнивание ELF64 и ZIP для 16-КБ страниц. У AAB проверяется запрос `PAGE_ALIGNMENT_16K` или более сильного выравнивания в `BundleConfig.pb`; protobuf-манифест читается локально, без сторонних Python-пакетов.
+Проверяется точный файл: подпись, запрет Android Debug certificate, отсутствие `debuggable`, `testOnly`, instrumentation/preview activity; SHA-256 модели и словаря; выравнивание ELF64 и ZIP для 16-КБ страниц. В `offline` дополнительно запрещены INTERNET и сетевые SDK. В `store` проверяются HTTPS, список рекламных компонентов в процессе `:ads`, отключённый автоматический запуск и отсутствие сторонних рекламных/аналитических SDK вне разрешённого состава. У AAB проверяется запрос `PAGE_ALIGNMENT_16K` или более сильного выравнивания в `BundleConfig.pb`; protobuf-манифест читается локально, без сторонних Python-пакетов.
 
 Это техническая проверка. Она не проверяет статус продавца, согласование цены магазином, право на бренд или поведение всех устройств. Перед отправкой установите полученные APK/splits на реальные устройства, включая устройство с 16-КБ страницами. Проверка известных имён SDK не заменяет независимый аудит стороннего кода.
 

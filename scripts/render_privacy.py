@@ -11,6 +11,8 @@ from urllib.parse import quote
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = REPO_ROOT / "app/src/main/assets/privacy/policy.json"
 DEFAULT_OUTPUT = REPO_ROOT / "docs/privacy"
+STORE_SOURCE = REPO_ROOT / "app/src/store/assets/privacy/policy.json"
+STORE_OUTPUT = DEFAULT_OUTPUT / "store"
 TOKENS = {"{{DEVELOPER_NAME}}", "{{SUPPORT_EMAIL}}"}
 
 
@@ -100,25 +102,30 @@ def render_page(document, language, developer_name=None, support_email=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--variant", choices=("offline", "store"), default="offline",
+                        help="Select the bundled policy and default publication directory")
+    parser.add_argument("--source", type=Path, help="Override the selected variant's policy source")
+    parser.add_argument("--output-dir", type=Path, help="Override the selected variant's publication directory")
     parser.add_argument("--developer-name", help="Public developer/app brand; do not invent a legal entity")
     parser.add_argument("--support-email", help="Public support contact shown in the policy")
     parser.add_argument("--check", action="store_true", help="Fail if checked-in pages differ; never writes files")
     args = parser.parse_args()
-    document = json.loads(args.source.read_text(encoding="utf-8"))
+    source = args.source or (STORE_SOURCE if args.variant == "store" else DEFAULT_SOURCE)
+    output_dir = args.output_dir or (STORE_OUTPUT if args.variant == "store" else DEFAULT_OUTPUT)
+    document = json.loads(source.read_text(encoding="utf-8"))
     outputs = {"index.html": render_page(document, "ru", args.developer_name, args.support_email),
                "en.html": render_page(document, "en", args.developer_name, args.support_email)}
     if args.check:
         stale = [name for name, value in outputs.items()
-                 if not (args.output_dir / name).is_file() or (args.output_dir / name).read_text(encoding="utf-8") != value]
+                 if not (output_dir / name).is_file() or (output_dir / name).read_text(encoding="utf-8") != value]
         if stale:
-            parser.exit(1, "Privacy pages are missing or stale: " + ", ".join(stale) + "\nRun python3 scripts/render_privacy.py\n")
+            parser.exit(1, "Privacy pages are missing or stale: " + ", ".join(stale) +
+                        f"\nRun python3 scripts/render_privacy.py --variant {args.variant}\n")
         print("Privacy pages match the bundled RU/EN policy.")
     else:
-        args.output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         for name, value in outputs.items():
-            (args.output_dir / name).write_text(value, encoding="utf-8")
+            (output_dir / name).write_text(value, encoding="utf-8")
         print("Rendered both privacy pages from the bundled policy.")
 
 

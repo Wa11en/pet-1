@@ -86,17 +86,17 @@ def feature(paths: list[str], language: str) -> str:
             "label": "ЛИЧНЫЙ ДНЕВНИК",
             "lines": ("Сохраните", "свой день."),
             "description": ("Поиск по смыслу.", "На вашем устройстве."),
-            "footer": "Без рекламы  ·  Без аккаунта",
+            "footer": "Офлайн-дневник  ·  Без аккаунта",
             "title": "Личный дневник — поиск по смыслу на устройстве",
-            "alt": "Тёплая бумажная обложка с иллюстрацией дневника. Поиск по смыслу на устройстве, без рекламы и аккаунта.",
+            "alt": "Тёплая бумажная обложка с иллюстрацией дневника. Офлайн-поиск по смыслу на устройстве, без аккаунта дневника.",
         },
         "en": {
             "label": "PRIVATE DIARY",
             "lines": ("Keep a little", "of every day."),
             "description": ("Search by meaning.", "On your device."),
-            "footer": "No ads  ·  No account",
+            "footer": "Offline writing  ·  No account",
             "title": "Private Diary — semantic search on your device",
-            "alt": "Warm paper artwork with a diary illustration. Search by meaning on your device, without ads or an account.",
+            "alt": "Warm paper artwork with a diary illustration. Offline semantic search on your device, without a diary account.",
         },
     }[language]
     esc = html.escape

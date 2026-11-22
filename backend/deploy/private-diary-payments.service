@@ -1,0 +1,25 @@
+[Unit]
+Description=Private Diary isolated payment service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=private-diary
+Group=private-diary
+WorkingDirectory=/opt/private-diary/backend
+EnvironmentFile=/etc/private-diary-payments.env
+ExecStart=/opt/private-diary/backend/.venv/bin/uvicorn diary_payments.app:app --host 127.0.0.1 --port 8080 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/private-diary
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

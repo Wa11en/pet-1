@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500" role="img">
 <title>Private Diary — semantic search on your device</title>
-<desc>Warm paper artwork with a diary illustration. Search by meaning on your device, without ads or an account.</desc>
+<desc>Warm paper artwork with a diary illustration. Offline semantic search on your device, without a diary account.</desc>
 <defs>
   <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#FBF8F1"/><stop offset="1" stop-color="#F7F4EC"/>
@@ -23,7 +23,7 @@
   <g transform="translate(64 424)" fill="none" stroke="#234C3F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <rect x="1" y="-1" width="11" height="9" rx="2"/><path d="M3-1V-4A3.5 3.5 0 0 1 10-4V-1"/>
   </g>
-  <text x="88" y="432" font-family="Noto Sans" font-size="14" fill="#65705F">No ads  ·  No account</text>
+  <text x="88" y="432" font-family="Noto Sans" font-size="14" fill="#65705F">Offline writing  ·  No account</text>
   <g transform="translate(612 51) scale(6.3) rotate(-8 33 35)">
     <path d="M51,13A5,5 0,1 1,41 13A5,5 0,1 1,51 13Z" fill="#DFC18A"/><path d="M23,18H44C46.21,18 48,19.79 48,22V51H24C20.69,51 18,53.69 18,57V23C18,20.24 20.24,18 23,18Z" fill="#183B30"/><path d="M21,15H41C43.21,15 45,16.79 45,19V48H22C19.24,48 17,50.24 17,53V20C17,17.24 18.24,15 21,15Z" fill="#F6F0DF"/><path d="M21,15H24V48H22C19.24,48 17,50.24 17,53V20C17,17.24 18.24,15 21,15Z" fill="#D4DDCB"/><path d="M34,15H39V29L36.5,27L34,29Z" fill="#C88768"/><path d="M29,34H38M29,39H35" fill="none" stroke="#55715F" stroke-width="2" stroke-linecap="round"/><path d="M22,48H45V54H22C20.34,54 19,52.66 19,51C19,49.34 20.34,48 22,48Z" fill="#E8E4D5"/><path d="M23,51H42" fill="none" stroke="#A7B29E" stroke-width="1.2" stroke-linecap="round"/>
   </g>

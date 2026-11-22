@@ -3,12 +3,19 @@ set -euo pipefail
 
 # Developer/CI-only capture of the real Compose UI with public, synthetic diary entries.
 # Production MainActivity keeps FLAG_SECURE; StorePreviewActivity exists only in debug.
-DEBUG_APK="${1:?Usage: check_store_screenshots.sh DEBUG_APK TEST_APK OUTPUT_DIRECTORY}"
+DEBUG_APK="${1:?Usage: check_store_screenshots.sh DEBUG_APK TEST_APK OUTPUT_DIRECTORY [offline|store]}"
 TEST_APK="${2:?Supply the matching signed instrumentation APK}"
 OUTPUT_DIRECTORY="${3:?Supply a local output directory}"
+BUILD_FLAVOR="${4:-offline}"
 TEST_RUNNER='ru.privatediary.test/androidx.test.runner.AndroidJUnitRunner'
 TEST_CLASS='ru.privatediary.store.StoreScreenshotsTest'
-REPORT_DIRECTORY="${RUNNER_TEMP:-/tmp}/private-diary-store-capture"
+REPORT_DIRECTORY="${RUNNER_TEMP:-/tmp}/private-diary-store-capture-$BUILD_FLAVOR"
+if [[ $# -gt 4 || "$BUILD_FLAVOR" != offline && "$BUILD_FLAVOR" != store ]]; then
+    echo 'Choose the screenshot variant: offline or store.' >&2
+    exit 2
+fi
+[[ -f "$DEBUG_APK" ]] || { printf 'Debug APK is missing: %s\n' "$DEBUG_APK" >&2; exit 1; }
+[[ -f "$TEST_APK" ]] || { printf 'Matching instrumentation APK is missing: %s\n' "$TEST_APK" >&2; exit 1; }
 mkdir -p "$OUTPUT_DIRECTORY" "$REPORT_DIRECTORY"
 
 original_size="$(adb shell wm size | tr -d '\r' | sed -n 's/^Override size: //p')"

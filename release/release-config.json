@@ -1,29 +1,29 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "applicationId": "ru.privatediary",
-  "versionName": "1.0.0-rc1",
-  "versionCode": 9,
-  "distribution": "paid_download",
+  "versionName": "1.0.0-rc2",
+  "versionCode": 10,
+  "distribution": "free_with_ads_and_pro",
   "store": "RuStore",
   "submissionReady": false,
   "publisher": {
     "displayName": "Private Diary",
     "supportEmail": "gr1val@yandex.ru",
     "legalName": null,
-    "merchantEligible": false,
-    "sellerAccountVerified": false
+    "taxStatus": "self_employed_individual",
+    "developerAccountVerified": false
   },
   "pricing": {
     "currency": "RUB",
-    "price": null,
-    "proposedPrice": 199,
-    "confirmed": false
+    "price": 0,
+    "confirmed": true
   },
   "privacy": {
-    "url": "https://wa11en.github.io/pet-1/privacy/",
+    "url": "https://wa11en.github.io/pet-1/privacy/store/",
     "publicUrlVerified": false,
-    "policyVersion": "1",
-    "updatedAt": "2026-11-21"
+    "policyVersion": "store-1",
+    "updatedAt": "2026-11-22",
+    "offlineUrl": "https://wa11en.github.io/pet-1/privacy/"
   },
   "signing": {
     "ownerHasKeystoreBackup": false,
@@ -32,13 +32,51 @@
   "review": {
     "ageRatingConfirmed": false,
     "ownerApprovedStoreCopy": false,
-    "storeScreenshotsReviewed": false
+    "storeScreenshotsReviewed": false,
+    "adDisclosureConfirmed": false,
+    "thirdPartyPaymentDeclared": false,
+    "coreOfflineDeviceTested": false
   },
   "runtime": {
-    "ads": false,
-    "analytics": false,
-    "internetPermission": false,
-    "modelBundled": true
+    "offline": {
+      "ads": false,
+      "analytics": false,
+      "internetPermission": false,
+      "modelBundled": true
+    },
+    "store": {
+      "ads": true,
+      "analytics": "ad_sdk_technical_telemetry",
+      "internetPermission": true,
+      "modelBundled": true,
+      "analyticsScope": "ads_process_only"
+    }
   },
-  "notes": "Технический кандидат. Перед отправкой в магазин владелец подтверждает продавца, юридическое имя, цену, ключ подписи и материалы. Производственный ключ создаётся и хранится у владельца."
+  "notes": "Бесплатная установка в RuStore. Pro: 99 ₽ за календарный месяц, каждое продление отдельной оплатой СБП без автосписаний; отключает рекламу и открывает локальную статистику. Основные функции бесплатны и офлайн. Production-настройки рекламы, YooKassa и сервера пока отсутствуют: до настройки платёж и реклама недоступны. Перед отправкой подтвердить договоры, чеки НПД, раскрытие сторонней оплаты и рекламы, ключ подписи и материалы.",
+  "pro": {
+    "planId": "pro_monthly",
+    "currency": "RUB",
+    "price": 99,
+    "period": "P1M",
+    "renewal": "manual_sbp",
+    "automaticDebits": false,
+    "features": [
+      "ad_free",
+      "local_insights"
+    ],
+    "provider": "YooKassa",
+    "providerAccountVerified": false,
+    "sbpEnabled": false,
+    "receiptsConfigured": false,
+    "productionConfigured": false,
+    "backendUrl": null,
+    "licensePublicKey": null
+  },
+  "ads": {
+    "provider": "YandexMobileAds",
+    "userInitiatedOnly": true,
+    "diaryDataShared": false,
+    "productionConfigured": false,
+    "adUnitId": null
+  }
 }

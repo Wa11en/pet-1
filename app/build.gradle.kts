@@ -10,18 +10,77 @@ plugins {
 
 abstract class CheckNoInternet : DefaultTask() {
     @get:InputFile abstract val manifest: RegularFileProperty
+    @get:Input abstract val networkFeatures: Property<Boolean>
     @TaskAction fun check() {
         val xml = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
             .newDocumentBuilder().parse(manifest.get().asFile)
-        val permissions = listOf("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-m")
-        for (tag in permissions) {
+        val ns = "http://schemas.android.com/apk/res/android"
+        val declaredPermissions = mutableSetOf<String>()
+        for (tag in listOf("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-m")) {
             val nodes = xml.getElementsByTagName(tag)
             for (i in 0 until nodes.length) {
-                val permission = nodes.item(i) as org.w3c.dom.Element
-                check(permission.getAttributeNS("http://schemas.android.com/apk/res/android", "name") != "android.permission.INTERNET") {
+                val permission = (nodes.item(i) as org.w3c.dom.Element).getAttributeNS(ns, "name")
+                declaredPermissions += permission
+                check(networkFeatures.get() || permission != "android.permission.INTERNET") {
                     "Privacy violation: INTERNET permission found in merged manifest"
                 }
             }
+        }
+        if (!networkFeatures.get()) return
+        check("android.permission.INTERNET" in declaredPermissions) { "Store monetization requires INTERNET" }
+        val forbiddenPermissions = setOf(
+            "com.google.android.gms.permission.AD_ID",
+            "android.permission.ACCESS_ADSERVICES_AD_ID",
+            "android.permission.ACCESS_ADSERVICES_ATTRIBUTION",
+            "android.permission.ACCESS_ADSERVICES_TOPICS",
+        )
+        check(declaredPermissions.intersect(forbiddenPermissions).isEmpty()) {
+            "Store advertising identifiers/AdServices permissions must be removed"
+        }
+        val application = xml.getElementsByTagName("application").item(0) as org.w3c.dom.Element
+        check(application.getAttributeNS(ns, "usesCleartextTraffic") == "false") { "Store traffic must use HTTPS" }
+        // The only reviewed SDK entry points. Any dependency change must be reviewed explicitly.
+        val allowed = mapOf(
+            "ru.privatediary.monetization.ads.StoreAdActivity" to ("activity" to true),
+            "com.yandex.mobile.ads.common.AdActivity" to ("activity" to true),
+            "com.yandex.mobile.ads.core.initializer.YandexAdsInitializeProvider" to ("provider" to false),
+            "io.appmetrica.analytics.internal.PreloadInfoContentProvider" to ("provider" to false),
+            "com.yandex.mobile.ads.features.debugpanel.data.local.DebugPanelFileProvider" to ("provider" to false),
+            "com.yandex.mobile.ads.features.debugpanel.ui.IntegrationInspectorActivity" to ("activity" to false),
+            "io.appmetrica.analytics.internal.AppMetricaService" to ("service" to true),
+            "com.google.android.gms.common.api.GoogleApiActivity" to ("activity" to false),
+        )
+        val sdkPrefixes = listOf("com.yandex.", "io.appmetrica.", "com.google.", "com.monetization.", "yads.",
+            "com.my.target.", "com.applovin.", "com.facebook.ads.", "com.unity3d.ads.")
+        val seen = mutableSetOf<String>()
+        val packageName = xml.documentElement.getAttribute("package")
+        for (tag in listOf("activity", "activity-alias", "service", "receiver", "provider")) {
+            val nodes = xml.getElementsByTagName(tag)
+            for (i in 0 until nodes.length) {
+                val component = nodes.item(i) as org.w3c.dom.Element
+                val rawName = component.getAttributeNS(ns, "name")
+                val name = if (rawName.startsWith(".")) packageName + rawName else rawName
+                if (name !in allowed && sdkPrefixes.none { name.startsWith(it) }) continue
+                val expected = allowed[name] ?: error("Unreviewed advertising SDK component: $name")
+                check(tag == expected.first) { "Unexpected component type for $name" }
+                check(seen.add(name)) { "Duplicate advertising component: $name" }
+                check(component.getAttributeNS(ns, "process") == ":ads") { "SDK component outside :ads: $name" }
+                check(component.getAttributeNS(ns, "exported") == "false") { "Exported advertising component: $name" }
+                val enabled = component.getAttributeNS(ns, "enabled")
+                check(if (expected.second) enabled.isEmpty() || enabled == "true" else enabled == "false") {
+                    "Unexpected enabled state for advertising component: $name"
+                }
+            }
+        }
+        check(seen == allowed.keys) { "Missing reviewed advertising components: ${allowed.keys - seen}" }
+        val metadata = (0 until application.childNodes.length).mapNotNull {
+            application.childNodes.item(it) as? org.w3c.dom.Element
+        }.filter {
+            it.tagName == "meta-data" &&
+                it.getAttributeNS(ns, "name") == "com.yandex.mobile.ads.AUTOMATIC_SDK_INITIALIZATION"
+        }
+        check(metadata.size == 1 && metadata.single().getAttributeNS(ns, "value") == "false") {
+            "Advertising SDK automatic initialization must be disabled"
         }
     }
 }
@@ -75,11 +134,32 @@ android {
         applicationId = "ru.privatediary"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
-        versionName = "1.0.0-rc1"
+        versionCode = 10
+        versionName = "1.0.0-rc2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PUBLISHER_DISPLAY_NAME", "\"Private Diary\"")
         buildConfigField("String", "SUPPORT_EMAIL", "\"gr1val@yandex.ru\"")
+    }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("offline") {
+            dimension = "distribution"
+            buildConfigField("boolean", "NETWORK_FEATURES", "false")
+            buildConfigField("String", "DISTRIBUTION", "\"offline\"")
+            buildConfigField("String", "YAN_AD_UNIT_ID", "\"\"")
+            buildConfigField("String", "PAYMENT_BACKEND_URL", "\"\"")
+            buildConfigField("String", "PRO_LICENSE_PUBLIC_KEY", "\"\"")
+        }
+        create("store") {
+            dimension = "distribution"
+            buildConfigField("boolean", "NETWORK_FEATURES", "true")
+            buildConfigField("String", "DISTRIBUTION", "\"store\"")
+            listOf("YAN_AD_UNIT_ID", "PAYMENT_BACKEND_URL", "PRO_LICENSE_PUBLIC_KEY").forEach { key ->
+                val value = providers.gradleProperty(key).orElse("").get()
+                require(value.none { it.isISOControl() || it == '"' || it == '\\' }) { "Invalid public build setting: $key" }
+                buildConfigField("String", key, "\"$value\"")
+            }
+        }
     }
     // Both languages must be available offline, including installs from App Bundles.
     bundle { language { enableSplit = false } }
@@ -111,7 +191,9 @@ androidComponents.onVariants { variant ->
     val suffix = variant.name.replaceFirstChar { it.uppercase() }
     val verify = tasks.register<CheckNoInternet>("check${suffix}NoInternet") {
         manifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+        networkFeatures.set(variant.productFlavors.any { it.second == "store" })
     }
+    tasks.register("check${suffix}Privacy") { dependsOn(verify) }
     if (variant.buildType == "release") {
         val signingCheck = tasks.register("check${suffix}Signing") {
             doLast {
@@ -143,9 +225,12 @@ androidComponents.onVariants { variant ->
         if (name == "test${suffix}UnitTest") {
             dependsOn(verify)
             systemProperty("mergedManifestPath", variant.artifacts.get(SingleArtifact.MERGED_MANIFEST).get().asFile.absolutePath)
+            systemProperty("distribution", if (variant.productFlavors.any { it.second == "store" }) "store" else "offline")
         }
     }
 }
+
+tasks.register("testDebugUnitTest") { dependsOn("testOfflineDebugUnitTest", "testStoreDebugUnitTest") }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
@@ -170,6 +255,10 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.7.0")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
     implementation("com.github.rholder:snowball-stemmer:1.3.0.581.1")
+    "storeImplementation"("com.yandex.android:mobileads:8.6.0")
+    constraints {
+        "storeImplementation"("io.appmetrica.analytics:analytics:8.6.0") { version { strictly("8.6.0") } }
+    }
     testImplementation("org.json:json:20250517")
     testImplementation("junit:junit:4.13.2")
     // CPU native library for explicitly requested JVM model tests only; never included in the Android APK.

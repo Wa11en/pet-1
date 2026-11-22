@@ -35,11 +35,11 @@ class PrivacyAssetsTest {
         }
     }
 
-    @Test fun theInstalledReleaseExcludesPreviewComponentsAndInternet() {
+    @Test fun installedNetworkPermissionMatchesTheDistributionAndPreviewComponentsStayPrivate() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manager = context.packageManager
         val permissions = manager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
-        assertFalse(permissions.contains("android.permission.INTERNET"))
+        assertEquals(BuildConfig.NETWORK_FEATURES, permissions.contains("android.permission.INTERNET"))
         assertEquals(0, context.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
         val preview = ComponentName(context.packageName, "ru.privatediary.debug.StorePreviewActivity")
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) {
@@ -47,5 +47,47 @@ class PrivacyAssetsTest {
         } else {
             assertFalse(manager.getActivityInfo(preview, 0).exported)
         }
+    }
+
+    @Test fun storeAdsAreConfinedToTheirProcessAndAutomaticProvidersAreDisabled() {
+        if (!BuildConfig.NETWORK_FEATURES) return
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val manager = context.packageManager
+        val disabled = PackageManager.MATCH_DISABLED_COMPONENTS
+        val expectedProcess = "${context.packageName}:ads"
+        fun component(name: String) = ComponentName(context.packageName, name)
+        for (name in listOf("ru.privatediary.monetization.ads.StoreAdActivity", "com.yandex.mobile.ads.common.AdActivity")) {
+            val info = manager.getActivityInfo(component(name), disabled)
+            assertEquals(expectedProcess, info.processName)
+            assertFalse(info.exported)
+            assertTrue(info.enabled)
+        }
+        for (name in listOf("com.yandex.mobile.ads.core.initializer.YandexAdsInitializeProvider",
+            "io.appmetrica.analytics.internal.PreloadInfoContentProvider",
+            "com.yandex.mobile.ads.features.debugpanel.data.local.DebugPanelFileProvider")) {
+            val info = manager.getProviderInfo(component(name), disabled)
+            assertEquals(expectedProcess, info.processName)
+            assertFalse(info.enabled)
+            assertFalse(info.exported)
+        }
+        for (name in listOf("com.yandex.mobile.ads.features.debugpanel.ui.IntegrationInspectorActivity",
+            "com.google.android.gms.common.api.GoogleApiActivity")) {
+            val info = manager.getActivityInfo(component(name), disabled)
+            assertEquals(expectedProcess, info.processName)
+            assertFalse(info.enabled)
+            assertFalse(info.exported)
+        }
+        val service = manager.getServiceInfo(component("io.appmetrica.analytics.internal.AppMetricaService"), disabled)
+        assertEquals(expectedProcess, service.processName)
+        assertFalse(service.exported)
+        val metadata = manager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA).metaData
+        assertFalse(metadata.getBoolean("com.yandex.mobile.ads.AUTOMATIC_SDK_INITIALIZATION", true))
+        val permissions = manager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
+        assertFalse(permissions.contains("com.google.android.gms.permission.AD_ID"))
+        val policy = context.assets.open("privacy/policy.json").bufferedReader().use { JSONObject(it.readText()) }
+        assertTrue(policy.getString("policy_version").startsWith("store-"))
+        val sections = policy.getJSONObject("locales").getJSONObject("ru").getJSONArray("sections")
+        val ids = (0 until sections.length()).map { sections.getJSONObject(it).getString("id") }
+        assertTrue(ids.containsAll(listOf("advertising", "payments")))
     }
 }

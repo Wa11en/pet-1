@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 import render_privacy
 
@@ -84,6 +85,58 @@ class PrivacyPublicationTest(unittest.TestCase):
             self.assertNotEqual(0, result.returncode)
             self.assertIn(b"missing or stale", result.stderr)
             self.assertEqual("Stale policy", output.read_text(encoding="utf-8"))
+
+    def testStoreVariantRendersItsOwnPolicyWithoutChangingOfflinePublication(self):
+        script = Path(render_privacy.__file__).resolve()
+        offline = {name: (render_privacy.DEFAULT_OUTPUT / name).read_bytes() for name in ("index.html", "en.html")}
+        policy = json.loads(render_privacy.STORE_SOURCE.read_text(encoding="utf-8"))
+        self.assertEqual(1, policy["schema_version"])
+        self.assertEqual("2026-11-22", policy["updated_at"])
+        self.assertNotEqual(self.policy["policy_version"], policy["policy_version"])
+        with tempfile.TemporaryDirectory() as directory:
+            command = [sys.executable, str(script), "--variant", "store", "--output-dir", directory]
+            subprocess.run(command, check=True, capture_output=True)
+            subprocess.run(command + ["--check"], check=True, capture_output=True)
+            for language, name in (("ru", "index.html"), ("en", "en.html")):
+                rendered = (Path(directory) / name).read_text(encoding="utf-8")
+                self.assertEqual(render_privacy.render_page(policy, language), rendered)
+                self.assertIn("Yandex Mobile Ads SDK 8.6.0", rendered)
+                self.assertIn("99", rendered)
+                self.assertIn("YooKassa", rendered)
+                self.assertNotIn("{{", rendered)
+                inspector = PageInspector()
+                inspector.feed(rendered)
+                self.assertNotIn("script", inspector.tags)
+                self.assertNotIn("img", inspector.tags)
+                self.assertTrue(all(not link.startswith(("https:", "http:")) for link in inspector.links))
+                section_ids = {section["id"] for section in policy["locales"][language]["sections"]}
+                self.assertTrue({"advertising", "payments"}.issubset(section_ids))
+        for name, original in offline.items():
+            self.assertEqual(original, (render_privacy.DEFAULT_OUTPUT / name).read_bytes())
+
+    def testStorePublicationIsCurrentWithoutRegeneratingIt(self):
+        script = Path(render_privacy.__file__).resolve()
+        subprocess.run([sys.executable, str(script), "--variant", "store", "--check"],
+                       check=True, capture_output=True)
+
+    def testStoreOverridesEveryScreenStringThatPromisesNoInternetOrAnalytics(self):
+        for qualifier in ("values", "values-ru"):
+            source = render_privacy.REPO_ROOT / "app/src/main/res" / qualifier
+            misleading = set()
+            for file in source.glob("*.xml"):
+                for item in ET.parse(file).getroot().findall("string"):
+                    text = "".join(item.itertext()).lower()
+                    if any(claim in text for claim in ("no internet", "no analytics", "no accounts, cloud sync or internet",
+                        "fully offline", "нет разрешения на интернет", "без доступа в интернет", "без аналитики", "полностью офлайн", "и доступа в интернет")):
+                        misleading.add(item.attrib["name"])
+            target = render_privacy.REPO_ROOT / "app/src/store/res" / qualifier / "privacy_monetization.xml"
+            overrides = {item.attrib["name"]: "".join(item.itertext()).lower()
+                         for item in ET.parse(target).getroot().findall("string")}
+            self.assertTrue(misleading, "Expected to audit offline privacy claims")
+            self.assertTrue(misleading.issubset(overrides), f"Missing {qualifier} store overrides: {misleading - overrides.keys()}")
+            for name in misleading:
+                self.assertNotIn("no internet", overrides[name])
+                self.assertNotIn("нет разрешения на интернет", overrides[name])
 
 
 if __name__ == "__main__":

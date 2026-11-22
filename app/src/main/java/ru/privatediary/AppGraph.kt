@@ -16,12 +16,17 @@ import ru.privatediary.security.DiarySettings
 import ru.privatediary.security.keystore.KeystoreVault
 import ru.privatediary.security.lock.PinLock
 import ru.privatediary.util.reminders.ReminderScheduler
+import ru.privatediary.domain.monetization.SignedEntitlementVerifier
+import ru.privatediary.monetization.ProAccessStore
+import ru.privatediary.monetization.SbpCheckoutClient
 
 /** Manual DI. The database and model are opened lazily after authentication, off the main thread. */
 class AppGraph(private val context: Context) {
     val settings = DiarySettings(context)
     val reminders = ReminderScheduler(context, settings)
     val lock = PinLock(context, settings)
+    val proAccess = ProAccessStore(context, SignedEntitlementVerifier(BuildConfig.PRO_LICENSE_PUBLIC_KEY, "ru.privatediary"))
+    val payments = SbpCheckoutClient(BuildConfig.PAYMENT_BACKEND_URL, BuildConfig.NETWORK_FEATURES)
     private val openMutex = Mutex()
     private var session: DiarySession? = null
 

@@ -14,8 +14,8 @@
 
 Альтернативные описания:
 
-- RU: «Бумажный дневник с закладкой на мягком зелёном фоне. Поиск по смыслу на устройстве, без рекламы и аккаунта».
-- EN: “A paper diary with a bookmark on a soft green background. Search by meaning on your device, without ads or an account.”
+- RU: «Бумажный дневник с закладкой на мягком зелёном фоне. Офлайн-поиск по смыслу на устройстве, без аккаунта дневника».
+- EN: “A paper diary with a bookmark on a soft green background. Offline semantic search on your device, without a diary account.”
 
 Воспроизведение из корня проекта:
 
