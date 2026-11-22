@@ -1,0 +1,119 @@
+name: Publish verified preview APKs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preview-rc2-publication
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Retrieve the exact public APKs without transferring a signing key
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: delivery/rc2-apk
+          path: binary-delivery
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Restore and verify the delivery archive
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, shutil, zipfile
+          from pathlib import Path
+          source = Path('binary-delivery')
+          manifest = json.loads((source / 'manifest.json').read_text())
+          output = Path(os.environ['RUNNER_TEMP']) / 'diary-preview'
+          output.mkdir()
+          archive = output / 'apks.zip'
+          def digest(path):
+              with path.open('rb') as stream:
+                  return hashlib.file_digest(stream, 'sha256').hexdigest()
+          with archive.open('wb') as target:
+              for name, expected in manifest['parts'].items():
+                  assert Path(name).name == name and name.startswith('apks.zip.part-')
+                  path = source / name
+                  assert digest(path) == expected, name
+                  with path.open('rb') as stream:
+                      shutil.copyfileobj(stream, target)
+          assert digest(archive) == manifest['archiveSha256']
+          allowed = {'Private-Diary-1.0.0-rc2-offline.apk', 'Private-Diary-1.0.0-rc2-store.apk',
+                     'offline-tests.apk', 'store-tests.apk'}
+          assert set(manifest['files']) == allowed
+          with zipfile.ZipFile(archive) as package:
+              assert set(package.namelist()) == allowed and len(package.namelist()) == len(allowed)
+              for name in sorted(allowed):
+                  path = output / name
+                  with package.open(name) as stream, path.open('wb') as target:
+                      shutil.copyfileobj(stream, target)
+                  assert digest(path) == manifest['files'][name], name
+          archive.unlink()
+          (output / 'SHA256SUMS.txt').write_text(''.join(
+              f"{manifest['files'][name]}  {name}\n" for name in sorted(allowed) if not name.endswith('-tests.apk')))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'DIARY_PREVIEW_DIR={output}\n')
+          PY
+      - name: Verify APK signatures and bundled model
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.0'
+          for flavor in offline store; do
+            for apk in "$DIARY_PREVIEW_DIR/Private-Diary-1.0.0-rc2-$flavor.apk" "$DIARY_PREVIEW_DIR/$flavor-tests.apk"; do
+              "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-certificate.txt"
+              grep -Fq '01eff5e414f45af7746c77732f65afa5af85800487653c4dfbacda93e2e14c81' "$RUNNER_TEMP/apk-certificate.txt"
+            done
+          done
+          python3 - <<'PY'
+          import hashlib, importlib.util, os, zipfile
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('verify', 'scripts/verify_release.py')
+          verifier = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(verifier)
+          for flavor in ('offline', 'store'):
+              path = Path(os.environ['DIARY_PREVIEW_DIR']) / f'Private-Diary-1.0.0-rc2-{flavor}.apk'
+              with zipfile.ZipFile(path) as apk:
+                  for name, expected in verifier.MODEL_HASHES.items():
+                      with apk.open('assets/model/' + name) as stream:
+                          assert hashlib.file_digest(stream, 'sha256').hexdigest() == expected
+          PY
+      - name: Enable emulator hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test both exact APKs on Android before publication
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -memory 2048
+          script: |
+            bash scripts/check_preview_android.sh "$DIARY_PREVIEW_DIR"
+      - name: Save public Android test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-rc2-android-verification
+          if-no-files-found: warn
+          path: ${{ runner.temp }}/diary-preview/*-android-tests.txt
+      - name: Publish the verified APKs to the prepared preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v1.0.0-rc2-preview --repo "$GITHUB_REPOSITORY" --clobber \
+            "$DIARY_PREVIEW_DIR/Private-Diary-1.0.0-rc2-store.apk" \
+            "$DIARY_PREVIEW_DIR/Private-Diary-1.0.0-rc2-offline.apk" "$DIARY_PREVIEW_DIR/SHA256SUMS.txt"
+          gh release edit v1.0.0-rc2-preview --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
