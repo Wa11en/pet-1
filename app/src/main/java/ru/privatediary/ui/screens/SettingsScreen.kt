@@ -58,27 +58,28 @@ internal fun SettingsScreen(state: DiaryUiState, actions: DiaryActions, onOpenTr
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.privacy_policy_title))
         }
-        if (ru.privatediary.BuildConfig.NETWORK_FEATURES) {
-            val proActive = state.pro.activeUntilMillis?.let { it > System.currentTimeMillis() } == true
+        val proActive = state.pro.activeUntilMillis?.let { it > System.currentTimeMillis() } == true
+        val showPro = ru.privatediary.monetization.MonetizationAvailability.showPro(state.pro, System.currentTimeMillis())
+        val showAds = !proActive && ru.privatediary.monetization.ads.AdsRuntime.isConfigured()
+        if (ru.privatediary.BuildConfig.NETWORK_FEATURES && (showPro || showAds)) {
             OutlinedCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(stringResource(R.string.pro_title), style = MaterialTheme.typography.titleLarge)
-                    Text(stringResource(if (proActive) R.string.pro_settings_active else R.string.pro_settings_summary),
-                        style = MaterialTheme.typography.bodyMedium)
-                    Button(onClick = onPro, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(if (proActive) R.string.pro_manage else R.string.pro_details))
+                    if (showPro) {
+                        Text(stringResource(R.string.pro_title), style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(if (proActive) R.string.pro_settings_active else R.string.pro_settings_summary),
+                            style = MaterialTheme.typography.bodyMedium)
+                        Button(onClick = onPro, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(if (proActive) R.string.pro_manage else R.string.pro_details))
+                        }
+                        OutlinedButton(onClick = onInsights, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.insights_title))
+                        }
                     }
-                    OutlinedButton(onClick = onInsights, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.insights_title))
-                    }
-                    if (!proActive) {
+                    if (showAds) {
                         Text(stringResource(R.string.ads_explicit_notice), style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = actions.onShowAd,
-                            enabled = ru.privatediary.monetization.ads.AdsRuntime.isConfigured(),
+                            enabled = enabled,
                             modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.ads_watch)) }
-                        if (!ru.privatediary.monetization.ads.AdsRuntime.isConfigured()) {
-                            Text(stringResource(R.string.ads_not_configured), style = MaterialTheme.typography.bodySmall)
-                        }
                     }
                 }
             }

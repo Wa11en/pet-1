@@ -10,6 +10,12 @@ Android-дневник с зашифрованными записями и по�
 
 **Production-подключения ещё нет:** публичные настройки рекламного блока, сервера и ключа проверки лицензии по умолчанию пустые. Без них приложение не показывает настоящую рекламу и не принимает оплату. Для коммерческого выпуска владелец подключает провайдеров, HTTPS-сервер, чеки и документы; это не подменяется тестовой активацией.
 
+## Релиз 1.0.0 для RuStore
+
+Версия 1.0.0 (11) готовится workflow [Prepare release APK for owner signing](.github/workflows/prepare-owner-release.yml): после сборки, unit-тестов, проверки release на Android и двух запусков подписи на Windows публикуется `Private-Diary-1.0.0-Release-Signing-Kit.zip` в [GitHub Releases](https://github.com/Wa11en/pet-1/releases). Комплект содержит неподписанный release APK и локальные инструменты. Постоянный ключ создаётся на компьютере владельца; Android Studio не нужна. [Пошаговая инструкция](release/signing-kit/README.ru.md) объясняет, как получить `output/Private-Diary-1.0.0-RuStore.apk` для загрузки в магазин.
+
+В этой версии неподключённые предложения рекламы и оплаты скрыты. При переходе с тестовой подписи сначала сохраните зашифрованную копию дневника; новый сертификат не позволяет обновиться поверх debug APK. Подпись и технические проверки не означают публикацию или одобрение модерацией.
+
 ## Скачать проверочную сборку 1.0.0-rc2
 
 [Скачать APK RuStore-варианта](https://github.com/Wa11en/pet-1/releases/download/v1.0.0-rc2-preview/Private-Diary-1.0.0-rc2-store.apk) · [Скачать вариант без INTERNET](https://github.com/Wa11en/pet-1/releases/download/v1.0.0-rc2-preview/Private-Diary-1.0.0-rc2-offline.apk) · [Страница и контрольные суммы](https://github.com/Wa11en/pet-1/releases/tag/v1.0.0-rc2-preview).

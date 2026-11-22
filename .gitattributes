@@ -1,0 +1,4 @@
+# Keep the signing kit runnable after checkout on either build platform.
+release/signing-kit/*.cmd text eol=crlf
+release/signing-kit/*.ps1 text eol=crlf
+release/signing-kit/*.sh text eol=lf

@@ -134,8 +134,8 @@ android {
         applicationId = "ru.privatediary"
         minSdk = 26
         targetSdk = 37
-        versionCode = 10
-        versionName = "1.0.0-rc2"
+        versionCode = 11
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PUBLISHER_DISPLAY_NAME", "\"Private Diary\"")
         buildConfigField("String", "SUPPORT_EMAIL", "\"gr1val@yandex.ru\"")

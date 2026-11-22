@@ -1,0 +1,199 @@
+name: Prepare release APK for owner signing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-release-preparation
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      ANDROID_USER_HOME: /tmp/private-diary-owner-release-ci
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Free historical delivery copies in the disposable checkout
+        run: rm -rf -- downloads
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare the isolated runtime-test key
+        run: |
+          mkdir -p "$ANDROID_USER_HOME"
+          keytool -genkeypair -noprompt -storetype JKS -keyalg RSA -keysize 3072 -validity 10000 \
+            -keystore "$ANDROID_USER_HOME/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -dname 'CN=Android Debug,O=Android,C=US'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-37.0' 'build-tools;35.0.0'
+      - name: Fetch pinned model on the build computer
+        run: bash scripts/fetch_model.sh
+      - name: Build and test the release without the owner's key
+        run: |
+          unset DIARY_RELEASE_STORE_FILE DIARY_RELEASE_STORE_PASSWORD DIARY_RELEASE_KEY_ALIAS DIARY_RELEASE_KEY_PASSWORD
+          ./gradlew assembleDebug testDebugUnitTest assembleStoreDebugAndroidTest assembleStoreRelease lintStoreRelease \
+            -PunsignedReleaseCandidate=true -PrequireModel=true -PverifyOfflineModel=true --max-workers=2 --console=plain
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+          python3 scripts/test_render_privacy.py
+          python3 scripts/render_privacy.py --check
+          python3 scripts/render_privacy.py --variant store --check
+      - name: Verify exact release APK and dormant integrations
+        run: |
+          python3 scripts/verify_release.py app/build/outputs/apk/store/release/app-store-release-unsigned.apk \
+            --variant store --allow-unsigned-candidate --report release/artifacts/owner-release-verification.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open('release/artifacts/owner-release-verification.json'))
+          fields = data['buildSettings']
+          assert fields['present'] and fields['distribution'] == 'store'
+          for name in ('yanAdUnitId', 'paymentBackendUrl', 'sellerLegalName', 'proTermsUrl', 'proRefundUrl'):
+              assert fields[name] == '', 'This first-release kit must not silently activate monetization'
+          assert fields['proLicensePublicKeySha256'] is None
+          PY
+      - name: Enable emulator hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test the non-debuggable release runtime copy
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -memory 2048
+          script: bash scripts/check_release_android.sh app/build/outputs/apk/store/release/app-store-release-unsigned.apk app/build/outputs/apk/androidTest/store/debug/app-store-debug-androidTest.apk release/artifacts/owner-runtime "$ANDROID_USER_HOME/debug.keystore" store
+      - name: Package the APK and public owner-signing tools
+        run: |
+          python3 scripts/package_owner_signing_kit.py \
+            --apk app/build/outputs/apk/store/release/app-store-release-unsigned.apk \
+            --apksigner-jar "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" \
+            --notice "$ANDROID_HOME/build-tools/35.0.0/NOTICE.txt" \
+            --verification-report release/artifacts/owner-release-verification.json
+      - name: Save public validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owner-release-verification
+          if-no-files-found: warn
+          path: |
+            release/artifacts/owner-release-verification.json
+            release/artifacts/owner-runtime/*.txt
+            release/artifacts/owner-runtime/runtime-summary.json
+            app/build/test-results/test*DebugUnitTest/*.xml
+            app/build/reports/lint-results-storeRelease.html
+      - name: Save only the key-free signing kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: owner-signing-kit
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            release/artifacts/Private-Diary-1.0.0-Release-Signing-Kit.zip
+            release/artifacts/Private-Diary-1.0.0-Release-Signing-Kit.zip.sha256
+
+  windows-signing-check:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: owner-signing-kit
+          path: incoming
+      - name: Verify and unpack public tools
+        shell: powershell
+        run: |
+          $zip = (Get-ChildItem incoming -Filter '*.zip').FullName
+          $expected = ((Get-Content ($zip + '.sha256') -Raw).Trim() -split '\s+')[0]
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ine $expected) { throw 'ZIP hash mismatch' }
+          $kit = Join-Path $env:RUNNER_TEMP 'owner signing kit'
+          Expand-Archive -LiteralPath $zip -DestinationPath $kit
+          $tokens = $null; $errors = $null
+          [void][Management.Automation.Language.Parser]::ParseFile((Join-Path $kit 'sign-release.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+          "DIARY_SMOKE_KIT=$kit" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "DIARY_OWNER_KEY_DIRECTORY=$(Join-Path $env:RUNNER_TEMP 'owner-test-private-key')" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Exercise the Windows helper using a disposable test key
+        shell: powershell
+        run: |
+          $bytes = New-Object byte[] 32
+          $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+          try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+          $env:DIARY_CI_TEST_PASSWORD = [Convert]::ToBase64String($bytes)
+          function global:Read-Host {
+            param([Parameter(Position=0)][string]$Prompt, [switch]$AsSecureString)
+            if (-not $AsSecureString) { throw 'Unexpected plaintext prompt' }
+            return ConvertTo-SecureString $env:DIARY_CI_TEST_PASSWORD -AsPlainText -Force
+          }
+          & (Join-Path $env:DIARY_SMOKE_KIT 'sign-release.ps1')
+          if ($LASTEXITCODE -ne 0) { throw 'First signing failed' }
+          $keyFile = Join-Path $env:DIARY_OWNER_KEY_DIRECTORY 'private-diary-release.p12'
+          $originalKeyHash = (Get-FileHash $keyFile -Algorithm SHA256).Hash
+          $record = Join-Path $env:DIARY_OWNER_KEY_DIRECTORY 'publickeyfingerprint.txt'
+          $originalRecord = Get-Content $record -Raw
+          $output = Join-Path $env:DIARY_SMOKE_KIT 'output/Private-Diary-1.0.0-RuStore.apk'
+          if (-not (Test-Path $output)) { throw 'No verified signed output' }
+          Remove-Item -LiteralPath $output, ($output + '.sha256')
+          & (Join-Path $env:DIARY_SMOKE_KIT 'sign-release.ps1')
+          if ($LASTEXITCODE -ne 0) { throw 'Existing key reuse failed' }
+          if ((Get-FileHash $keyFile -Algorithm SHA256).Hash -cne $originalKeyHash) { throw 'The helper replaced the key' }
+          if ((Get-Content $record -Raw) -cne $originalRecord) { throw 'The helper changed signing identity' }
+          if (-not (Test-Path $output)) { throw 'No reused-key output' }
+          $env:DIARY_CI_TEST_PASSWORD = $null
+          'OK' | Set-Content (Join-Path $env:RUNNER_TEMP 'owner-windows-smoke-ok.txt')
+      - name: Require the completed two-pass signing check
+        shell: powershell
+        run: |
+          if ((Get-Content (Join-Path $env:RUNNER_TEMP 'owner-windows-smoke-ok.txt') -Raw).Trim() -ne 'OK') {
+            throw 'Owner signing helper did not complete both checks'
+          }
+      - name: Remove the disposable test key and signed copies
+        if: always()
+        shell: powershell
+        run: |
+          if ($env:DIARY_OWNER_KEY_DIRECTORY -and (Test-Path $env:DIARY_OWNER_KEY_DIRECTORY)) {
+            Remove-Item -LiteralPath $env:DIARY_OWNER_KEY_DIRECTORY -Recurse -Force
+          }
+          if ($env:DIARY_SMOKE_KIT -and (Test-Path $env:DIARY_SMOKE_KIT)) {
+            Remove-Item -LiteralPath $env:DIARY_SMOKE_KIT -Recurse -Force
+          }
+
+  publish:
+    needs: [build, windows-signing-check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: owner-signing-kit
+          path: incoming
+      - name: Publish the verified release-signing kit without any private key
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v1.0.0-signing-${GITHUB_SHA:0:7}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --prerelease --latest=false \
+              --target "$GITHUB_SHA" --title 'Private Diary 1.0.0 — релиз и локальная подпись' \
+              --notes-file release/signing-kit/RELEASE_NOTES.ru.md
+          fi
+          gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber incoming/*.zip incoming/*.zip.sha256
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
